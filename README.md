@@ -11,8 +11,7 @@ Run the following command:
 g++ -fPIC -shared -o RobustPeakFinder.so RobustPeakFinder.c
 ```
 
-Tha wrapper will be looking for RobustPeakFinder.se
-if you changed this name, you have to change it in the wrapper too.
+Tha wrapper will be looking for "RobustPeakFinder.so". if you changed this name, you have to change it in the wrapper too.
 
 # Usage from Python
 A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py
