@@ -1,4 +1,4 @@
-import robustPeakFinderWrapper
+import RobustPeakFinder_Python_Wrapper
 
 import numpy
 import scipy.stats
