@@ -1,6 +1,6 @@
 import numpy
 import ctypes
-peakFinderPythonLib = ctypes.cdll.LoadLibrary("./PeakFinderPy.so")
+peakFinderPythonLib = ctypes.cdll.LoadLibrary("./RobustPeakFinder.so")
 peakFinderPythonLib.peakFinder.restype = ctypes.c_int
 peakFinderPythonLib.peakFinder.argtypes = [
 				ctypes.c_double, ctypes.c_double,
