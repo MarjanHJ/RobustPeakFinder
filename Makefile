@@ -18,6 +18,10 @@ $(SRCS:.c=.d):%.d:%.c
 
 include $(SRCS:.c=.d)
 
+.PHONY: test
+test:
+	python3 RobustPeakFinder_Python_Test_Simple.py
+
 .PHONY: clean
 clean:
 	-${RM} ${TARGET_LIB} ${OBJS} $(SRCS:.c=.d)
