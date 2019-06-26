@@ -20,7 +20,6 @@ Mass_Center_X, Mass_Center_Y, Mass_Total, Number of pixels in a peak
 -------------------------------------------------------------------------
 
 You can get the number of peaks by peakListCheeta.shape()[0]
-
 '''
 
 import numpy
@@ -34,10 +33,10 @@ peakFinderPythonLib.peakFinder.argtypes = [
                 numpy.ctypeslib.ndpointer(ctypes.c_double, flags="C_CONTIGUOUS")]
 
 
-def robustPeakFinderPyFunc(	indata,
-							LAMBDA = 4.0,
-							SNR_ACCEPT = 8.0,
-							PEAK_MAX_PIX = 50):
+def robustPeakFinderPyFunc(indata,
+				LAMBDA = 4.0,
+				SNR_ACCEPT = 8.0,
+				PEAK_MAX_PIX = 50):
     peakListCheeta = numpy.zeros([50000, 4])
     szx, szxy = indata.shape
     peak_cnt = peakFinderPythonLib.peakFinder(LAMBDA, SNR_ACCEPT,
