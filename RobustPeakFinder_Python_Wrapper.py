@@ -40,6 +40,6 @@ def robustPeakFinderPyFunc(indata,
     peakListCheeta = numpy.zeros([50000, 4])
     szx, szxy = indata.shape
     peak_cnt = peakFinderPythonLib.peakFinder(LAMBDA, SNR_ACCEPT,
-								indata, szxy, szx,
-								PEAK_MAX_PIX, peakListCheeta)
+						indata, szxy, szx,
+						PEAK_MAX_PIX, peakListCheeta)
     return peakListCheeta[:peak_cnt]
