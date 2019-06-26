@@ -5,15 +5,15 @@
 #include <math.h>
 //#include <time.h>
 
-#define INFIMUM_C 					30000.0
+#define INFIMUM_C 							30000.0
 #define MIN_STRUCT_PERCENT_C		0.5
-#define PEAK_MIN_PIX                1
-#define GLOBAL_THRESHOLD            -10000.0
-#define PEAK_THRESHOLD				10.0
-#define PAPR_ACCEPT_C 				2.0
-#define WIN_PERCENTAGE				0.8
-#define	WINSIDE_MAX					8
-#define	WINSIDE_MIN					4
+#define PEAK_MIN_PIX						1
+#define GLOBAL_THRESHOLD				-10000.0
+#define PEAK_THRESHOLD					10.0
+#define PAPR_ACCEPT_C 					2.0
+#define WIN_PERCENTAGE					0.8
+#define	WINSIDE_MAX							8
+#define	WINSIDE_MIN							4
 
 
 void freeArray_d(double **a, unsigned int m) {
@@ -46,7 +46,7 @@ int partition( struct sortStruct dataVec[], int l, int r) {
 		do ++i; while( dataVec[i].vecData <= pivot && i <= r );
 		do --j; while( dataVec[j].vecData > pivot );
 		if( i >= j ) break;
-		t = dataVec[i]; 
+		t = dataVec[i];
 		dataVec[i] = dataVec[j];
 		dataVec[j] = t;
    }
@@ -81,7 +81,7 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 	MSSE_FINITE_SAMPLE_BIAS = floor(WIN_N/2);
 	if (MSSE_FINITE_SAMPLE_BIAS < 12)
 		MSSE_FINITE_SAMPLE_BIAS = 12;
-	
+
 	estScale = INFIMUM_C;
 	LAMBDA_CSq = LAMBDA_C*LAMBDA_C;
 	cumulative_sum = 0;
@@ -112,21 +112,19 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 // peaks_cheetaho is a flattened matrix output size : peak_cnt by 4
 
 ////////////////// Local Peak_infor for other ML tasks ///////////////
-// Peak_info = Pointer to output matrix (whose abstract is provided inthe output of the functoin): 
+// Peak_info = Pointer to output matrix (whose abstract is provided inthe output of the functoin):
 // Rows are each peak and comloums are infor of each peak
 // coloumns : 1 : MAX_NUM_PEAKS_C are the X of each pixel of a peak
 //            MAX_NUM_PEAKS_C+1 : 2*MAX_NUM_PEAKS_C are the Y of each pixel of a peak
 //			  2*MAX_NUM_PEAKS_C+1 : 3*MAX_NUM_PEAKS_C are the Z of each pixel of a peak
 //			  3*MAX_NUM_PEAKS_C + 1 : SNR scalar value
-//            3*MAX_NUM_PEAKS_C + 2 : Number of pixels in a peak
+//            3*MAX_NUM_PEAKS_C + 2 : Number of pixels in a peaksudo apt-get install atom
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, int YPIX, int PEAK_MAX_PIX, double *peakListCheeta) {
-	
-	
 
 	int *inpData_mask;
 	int *win_peak_info_x;
@@ -153,7 +151,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 	double sumWinData;
 	double win_Skew;
 	double tmpval;
-	
+
 	unsigned int WINSIDE, peakSearchCounter, not_an_extermum_flag;
 	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM, PTCHSZ;
 	unsigned int i, j, peak_pix_cnt, pixcnt, peak_cnt, win_num_pix;
@@ -163,12 +161,15 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 	unsigned int win_num_unmasked_pix;
 	unsigned int sumNoDataPix;
 	unsigned long pixelcounter, pixindex;
+
+	Glob_clm_ind = 0;
+	Glob_row_ind = 0;
 	
 	double **peak_info;
 	unsigned int peak_info_clm = PEAK_MAX_PIX*3+2;
 //clock_t start_1;
 //double cpu_time_used_1=0;
-//start_1 = clock();			
+//start_1 = clock();
 
 	PTCHSZ = 40;// floor(sqrt(49 * PEAK_MAX_PIX));	//this means that size of a Peak should be less than 1% of a patch.
 	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//now XPIX may or may not be dividable by PTCHSZ
@@ -189,15 +190,15 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 	sortVec = (struct sortStruct*) malloc(WIN_N * sizeof(struct sortStruct));
 	win_peak_info_x = (int*) malloc(WIN_N * sizeof(int));
 	win_peak_info_y = (int*) malloc(WIN_N * sizeof(int));
-	win_peak_info_val = (double*) malloc(WIN_N * sizeof(double));				
-	pix_to_visit = (int*) malloc(WIN_N * sizeof(int)); 
+	win_peak_info_val = (double*) malloc(WIN_N * sizeof(double));
+	pix_to_visit = (int*) malloc(WIN_N * sizeof(int));
 	peak_info = (double **) malloc(1*sizeof(double *));
 
 	for (pixelcounter=0; pixelcounter<XPIX*YPIX;pixelcounter++)
 		inpData_mask[pixelcounter]=1;
 
 //cpu_time_used_1 += ((double) (clock() - start_1));
-//cpu_time_used_1 = 0;	
+//cpu_time_used_1 = 0;
 
 	//we turn the image into patches to propose peaks,
 	//then, regardless of the patching, in each patch we check each proposed peak.
@@ -240,8 +241,6 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 				if	(Pchimg_maximum <= PEAK_THRESHOLD)	//if a pixel was visited before or masked out for some resaon
 					continue;
 
-				if (Glob_row_ind==108 && Glob_clm_ind==217)
-					printf("Hellow");
 				peakSearchCounter++;		//count the number of local maximums
 
 				//acquire the data around the extremum from original data.
@@ -253,7 +252,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 				sumNoDataPix = 0;
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
-						
+
 						CURX = Glob_row_ind + rcnt - WINSIDE;
 						CURY = Glob_clm_ind + ccnt - WINSIDE;
 
@@ -319,7 +318,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 
 				if (Patch_Threshold < win_Proposed_Threshold)
 					Patch_Threshold = win_Proposed_Threshold;
-				
+
 				if (not_an_extermum_flag>0)
 					continue;
 
@@ -345,12 +344,12 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 
 				//now begin by the extremum and mark all the adjacent
 				//pixels that are above the proposed Threshold
-				
+
 				peak_pix_cnt = 0; //number of pixels of a peak
-				
+
 				//we go through adjacent pixels step by step and add them to the peak if they were above threshhold
-				
-				win_peak_info_x[peak_pix_cnt] = WINSIDE;	//this is the index of the center pixel	
+
+				win_peak_info_x[peak_pix_cnt] = WINSIDE;	//this is the index of the center pixel
 				win_peak_info_y[peak_pix_cnt] = WINSIDE;
 				win_peak_info_val[peak_pix_cnt] = win_of_peak[WINSIDE][WINSIDE];
 				sumPeakValues = win_peak_info_val[peak_pix_cnt];
@@ -413,17 +412,18 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 							win_Skew += tmpval*tmpval*tmpval;
 						}
 				win_estScale = sqrt(win_estScale/(win_num_unmasked_pix-1));
-				
+
 				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / win_estScale;
 
 				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) ) {
-					
+
 					if (peak_cnt)
 						peak_info = (double **) realloc(peak_info, (peak_cnt+1)*sizeof(double *));
 					peak_info[peak_cnt]=(double *) malloc( peak_info_clm*sizeof(double));
 					for(j=0;j<peak_info_clm;j++)
 						peak_info[peak_cnt][j]=0;
 
+					//Our own Peaklist
 					double mass_x=0;
 					double mass_y=0;
 					double mass_t=0;
@@ -439,14 +439,15 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 					peak_info[peak_cnt][3*PEAK_MAX_PIX-1] = win_estScale;
 					peak_info[peak_cnt][3*PEAK_MAX_PIX] = Peak_SNR; // SNR
 					peak_info[peak_cnt][3*PEAK_MAX_PIX+1] = peak_pix_cnt; // number of pixels
-					
+
+					//Complying with Cheetahs output
 					peakListCheeta[4*peak_cnt+0] = mass_x/mass_t - 0.5;
 					peakListCheeta[4*peak_cnt+1] = mass_y/mass_t - 0.5;
 					peakListCheeta[4*peak_cnt+2] = mass_t;
 					peakListCheeta[4*peak_cnt+3] = peak_pix_cnt;
-					
+
 					peak_cnt++;
-	
+
 				}
 
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
@@ -465,7 +466,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 
 		} //end of for pathes_y
 	} //end of for pathes_x
-//cpu_time_used_1 = cpu_time_used_1/CLOCKS_PER_SEC;	
+//cpu_time_used_1 = cpu_time_used_1/CLOCKS_PER_SEC;
 
 
 /////////////// Creat the list for Cheetah /////////////
@@ -485,6 +486,8 @@ free(pix_to_visit);
 
 return(peak_cnt);
 }
+
+
 
 #ifdef __cplusplus
 }

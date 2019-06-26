@@ -1,3 +1,24 @@
+'''
+This is an example of how to use the wrapper for the Australian Synchotron HDF5 files
+
+The example requires two files, YOUR_H5_MASTER_FILE_nAME and YOUR_H5_DATA_FILE_NAME
+
+after that the example reads the first image in the data file and performs the
+Robust Peak Finder and generates the output outdata.
+
+The wrapper is called for default settings.
+
+the output numpy 2d-array outdata has a number of rows equal to number of peaks
+and four coloumns in the style of Cheetah's output.
+Rows are peaks and coloums are:
+-------------------------------------------------------------------------
+Mass_Center_X, Mass_Center_Y, Mass_Total, Number of pixels in a peak
+-------------------------------------------------------------------------
+
+In this example, the input image is then plotted and peaks are plotted on top of that
+
+'''
+
 import RobustPeakFinder_Python_Wrapper
 
 import hdf5plugin
@@ -5,16 +26,10 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-PEAK_MAX_PIX = 50;
-SNR_ACCEPT = 8.0;
-MSSE_LAMBDA = 4.0;
-HIT_NUM_PEAKS_THRESHOLD = 20;
-
 MasterFileName = YOUR_H5_MASTER_FILE_nAME
 ReadFileName = YOUR_H5_DATA_FILE_NAME
 
 file = h5py.File(MasterFileName,'r')
-#FOR AusSynch
 mpbdata = file['/entry/instrument/detector/detectorSpecific/pixel_mask']
 mpbdata = mpbdata[()]
 mpbdata[mpbdata<1]=0;
@@ -25,17 +40,14 @@ file.close()
 file = h5py.File(ReadFileName,'r')
 datatmp = file['/entry/data/data']
 
-for Framecnt in range(1):#datatmp.shape[0]):
-    indata = datatmp[Framecnt,:,:] * mask_data
-    indata = indata.astype(np.double)
-    outdata = robustPeakFinderWrapper.robustPeakFinderPyFunc(indata)
-    print("There is " + str(outdata.shape[0]) + " peaks in this diffraction pattern!")
-    showdata = outdata[:,:2]
-    
-    fig = plt.figure()
-    plt.imshow(indata, vmin=0, vmax= 100)
-    plt.scatter(showdata[:,0],showdata[:,1])
- 
-    fig = plt.figure()
-    plt.imshow(indata, vmin=0, vmax= 100)
-    plt.scatter(showdata2[:,0],showdata2[:,1])
+Frame_number = 1
+indata = datatmp[Frame_number,:,:] * mask_data
+indata = indata.astype(np.double)
+outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(indata)
+print("There is " + str(outdata.shape[0]) + " peaks in this diffraction pattern!")
+
+
+fig = plt.figure()
+plt.imshow(indata, vmin=0, vmax= 100)
+showdata = outdata[:,:2]
+plt.scatter(showdata[:,0],showdata[:,1])
