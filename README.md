@@ -16,9 +16,11 @@ A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py. Tha 
 # Examples in Python 
 Two Python tests are also provided:
 
-1- A Test written specifically to read one image from a HDF5 file made in Australian Synchotron in the file: RobustPeakFinder_Python_Test_for_AS.py
+1- A Test written specifically to read a HDF5 file from Australian Synchotron:
+RobustPeakFinder_Python_Test_for_AS.py
 
-2- A Simple test to prove that the code is working in the file: RobustPeakFinder_Python_Test_Simple.py. Simply type in:
+2- A Simple test to prove that the code is working in the file: RobustPeakFinder_Python_Test_Simple.py.
+Simply type in:
 ```
 make test
 ```
