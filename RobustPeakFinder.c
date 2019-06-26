@@ -5,15 +5,15 @@
 #include <math.h>
 //#include <time.h>
 
-#define INFIMUM_C 							30000.0
+#define INFIMUM_C			30000.0
 #define MIN_STRUCT_PERCENT_C		0.5
-#define PEAK_MIN_PIX						1
-#define GLOBAL_THRESHOLD				-10000.0
-#define PEAK_THRESHOLD					10.0
-#define PAPR_ACCEPT_C 					2.0
-#define WIN_PERCENTAGE					0.8
-#define	WINSIDE_MAX							8
-#define	WINSIDE_MIN							4
+#define PEAK_MIN_PIX			1
+#define GLOBAL_THRESHOLD		0.0
+#define PEAK_THRESHOLD			10.0
+#define PAPR_ACCEPT_C			2.0
+#define WIN_PERCENTAGE			0.8
+#define	WINSIDE_MA			8
+#define	WINSIDE_MIN			4
 
 
 void freeArray_d(double **a, unsigned int m) {
