@@ -1,7 +1,7 @@
 '''
-This is a very simple example to show how to use the Robust Peak Finder to show that it is simple working. The program generates a syntethic pattern with a noisy background and 25 peaks
+This is a simple example to show how to use the Robust Peak Finder. The program generates a syntethic pattern with a noisy background and 25 peaks
 
-Then calls the wrapper and generates a 2D array output as described in the wrapper. It must "most probably" find 25 peaks.
+Then calls the wrapper and generates a 2D array output as described in the wrapper.
 
 '''
 
@@ -32,4 +32,4 @@ for cnt in numpy.arange(inputPeaksNumber):
     indata[ winXStart : winXEnd, winYStart : winYEnd ] += bellShapedCurve;
 
 outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(indata)
-print("I found " + str(outdata.shape[0]) + " peaks in your diffraction pattern!")
+print("There is " + str(outdata.shape[0]) + " peaks in this image!")
