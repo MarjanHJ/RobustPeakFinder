@@ -39,6 +39,7 @@ file.close()
 
 file = h5py.File(ReadFileName,'r')
 datatmp = file['/entry/data/data']
+file.close()
 
 Frame_number = 1
 inData = datatmp[Frame_number,:,:]
