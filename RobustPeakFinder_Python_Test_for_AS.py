@@ -26,7 +26,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-MasterFileName = YOUR_H5_MASTER_FILE_nAME
+MasterFileName = YOUR_H5_MASTER_FILE_NAME
 ReadFileName = YOUR_H5_DATA_FILE_NAME
 
 file = h5py.File(MasterFileName,'r')
