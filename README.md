@@ -9,7 +9,7 @@ Run the following command to generate a shared library .so:
 ```
 make
 ```
-
+**Note**: the first comment line in the C file can also fo the task.
 # Usage from Python
 A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py. Tha wrapper will be looking for the .so shared library file.
 
