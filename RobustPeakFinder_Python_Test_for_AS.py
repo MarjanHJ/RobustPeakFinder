@@ -41,13 +41,13 @@ file = h5py.File(ReadFileName,'r')
 datatmp = file['/entry/data/data']
 
 Frame_number = 1
-indata = datatmp[Frame_number,:,:] * mask_data
-indata = indata.astype(np.double)
-outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(indata)
+inData = datatmp[Frame_number,:,:]
+inMask = mask_data
+inData = inData.astype(np.double)
+outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData, inMask)
 print("There is " + str(outdata.shape[0]) + " peaks in this diffraction pattern!")
 
-
 fig = plt.figure()
-plt.imshow(indata, vmin=0, vmax= 100)
+plt.imshow(inData, vmin=0, vmax= 100)
 showdata = outdata[:,:2]
 plt.scatter(showdata[:,0],showdata[:,1])

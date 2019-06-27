@@ -1,4 +1,4 @@
-// g++ -fPIC -shared -o PeakFinderPy.so PeakFinderPy.cc
+// g++ -fPIC -shared -o RobustPeakFinder.so RobustPeakFinder.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -12,7 +12,7 @@
 #define PEAK_THRESHOLD			10.0
 #define PAPR_ACCEPT_C			2.0
 #define WIN_PERCENTAGE			0.8
-#define	WINSIDE_MA			8
+#define	WINSIDE_MAX			8
 #define	WINSIDE_MIN			4
 
 
@@ -124,7 +124,7 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 extern "C" {
 #endif
 
-int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, int YPIX, int PEAK_MAX_PIX, double *peakListCheeta) {
+int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *originalMask, int XPIX, int YPIX, int PEAK_MAX_PIX, double *peakListCheeta) {
 
 	int *inpData_mask;
 	int *win_peak_info_x;
@@ -195,7 +195,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, int XPIX, i
 	peak_info = (double **) malloc(1*sizeof(double *));
 
 	for (pixelcounter=0; pixelcounter<XPIX*YPIX;pixelcounter++)
-		inpData_mask[pixelcounter]=1;
+		inpData_mask[pixelcounter]=originalMask[pixelcounter];
 
 //cpu_time_used_1 += ((double) (clock() - start_1));
 //cpu_time_used_1 = 0;
