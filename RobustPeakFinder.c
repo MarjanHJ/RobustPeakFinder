@@ -109,7 +109,7 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 
 ////////////////// OUTPUTS //////////////////
 // peak_cnt is number of discovered peaks
-// peaks_cheetaho is a flattened matrix output size : peak_cnt by 4
+// peaks_cheetah is a flattened matrix output size : peak_cnt by 4
 
 ////////////////// Local Peak_infor for other ML tasks ///////////////
 // Peak_info = Pointer to output matrix (whose abstract is provided inthe output of the functoin):
@@ -124,7 +124,7 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 extern "C" {
 #endif
 
-int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *originalMask, int XPIX, int YPIX, int PEAK_MAX_PIX, double *peakListCheeta) {
+int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *originalMask, int XPIX, int YPIX, int PEAK_MAX_PIX, double *peakListCheetah) {
 
 	int *inpData_mask;
 	int *win_peak_info_x;
@@ -440,11 +440,11 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 					peak_info[peak_cnt][3*PEAK_MAX_PIX] = Peak_SNR; // SNR
 					peak_info[peak_cnt][3*PEAK_MAX_PIX+1] = peak_pix_cnt; // number of pixels
 
-					//Complying with Cheetahs output
-					peakListCheeta[4*peak_cnt+0] = mass_x/mass_t - 0.5;
-					peakListCheeta[4*peak_cnt+1] = mass_y/mass_t - 0.5;
-					peakListCheeta[4*peak_cnt+2] = mass_t;
-					peakListCheeta[4*peak_cnt+3] = peak_pix_cnt;
+					//Complying with Cheetah's output
+					peakListCheetah[4*peak_cnt+0] = mass_x/mass_t - 0.5;
+					peakListCheetah[4*peak_cnt+1] = mass_y/mass_t - 0.5;
+					peakListCheetah[4*peak_cnt+2] = mass_t;
+					peakListCheetah[4*peak_cnt+3] = peak_pix_cnt;
 
 					peak_cnt++;
 
@@ -468,9 +468,6 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 	} //end of for pathes_x
 //cpu_time_used_1 = cpu_time_used_1/CLOCKS_PER_SEC;
 
-
-/////////////// Creat the list for Cheetah /////////////
-
 freeArray_d(win_of_peak,WINSZ);
 freeArray_i(win_of_peak_mask,WINSZ);
 freeArray_d(peak_info, peak_cnt);
@@ -486,7 +483,6 @@ free(pix_to_visit);
 
 return(peak_cnt);
 }
-
 
 
 #ifdef __cplusplus
