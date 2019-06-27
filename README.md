@@ -28,8 +28,8 @@ PEAK_MAX_PIX: Number of pixels in a peak.
 peakListCheetah is a numpy 2D-array in the style of Cheetah's output.
 Rows are for each peak and coloums are:
 
-| First_Moment_X | First_Moment_Y | Sum_Total_values | Number of pixels in a peak |
-| -------------- | -------------- | ---------------- | -------------------------- |
+| First Moment X | First Moment Y | Sum of all values | Number of pixels in a peak |
+| -------------- | -------------- | ----------------- | -------------------------- |
 
 You can get the number of peaks by YOUR_OUTPUT_VARIABLE_NAME.shape()[0]
 
