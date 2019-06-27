@@ -14,18 +14,18 @@ make
 A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py. Tha wrapper will be looking for the .so shared library file.
 
 ## Inputs:
-inData : This is the 2D input image as a numpy 2d-array.
-inMask : This is the bad pixel mask.
+* **inData**: This is the 2D input image as a numpy 2d-array.
+* **inMask**: This is the bad pixel mask.
 		default: 1 for all pixels
-LAMBDA : The ratio of a Guassian Profile over its standard deviation that is assumed as inlier
+* **LAMBDA**: The ratio of a Guassian Profile over its standard deviation that is assumed as inlier
 		default: 4 Sigma (Sigma being its STD)
-SNR_ACCEPT: Traditionally, SNR is one of the factors to reject bad peakListCheeta
+* **SNR_ACCEPT**: Traditionally, SNR is one of the factors to reject bad peakListCheeta
 		default: 8.0
-PEAK_MAX_PIX: Number of pixels in a peak.
+* **PEAK_MAX_PIX**: Number of pixels in a peak.
 		default: 50
 
 ## Output:
-peakListCheetah is a numpy 2D-array in the style of Cheetah's output.
+**peakListCheetah** is a numpy 2D-array in the style of Cheetah's output.
 Rows are for each peak and coloums are:
 
 | First Moment X | First Moment Y | Sum of all values | Number of pixels in a peak |
