@@ -25,7 +25,7 @@ A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py. Tha 
 		default: 50
 
 ### Output:
-**peakListCheetah** is a numpy 2D-array in the style of Cheetah's output.
+The function's output is a numpy 2D-array in the style of Cheetah's output.
 Rows are for each peak and coloums are:
 
 | First Moment X | First Moment Y | Sum of all values | Number of pixels in a peak |
