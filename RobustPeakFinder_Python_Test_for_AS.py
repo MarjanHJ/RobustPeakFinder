@@ -34,7 +34,7 @@ mpbdata = file['/entry/instrument/detector/detectorSpecific/pixel_mask']
 mpbdata = mpbdata[()]
 mpbdata[mpbdata<1]=0;
 mpbdata[mpbdata>0]=-1;
-mask_data = 1+mpbdata;
+inMask = 1+mpbdata;
 file.close()
 
 file = h5py.File(ReadFileName,'r')
@@ -42,7 +42,6 @@ datatmp = file['/entry/data/data']
 
 Frame_number = 1
 inData = datatmp[Frame_number,:,:]
-inMask = mask_data
 inData = inData.astype(np.double)
 outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData, inMask)
 print("There is " + str(outdata.shape[0]) + " peaks in this diffraction pattern!")
