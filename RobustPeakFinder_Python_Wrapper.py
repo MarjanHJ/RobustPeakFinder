@@ -40,8 +40,11 @@ def robustPeakFinderPyFunc(inData, inMask = None,
 				LAMBDA = 4.0,
 				SNR_ACCEPT = 8.0,
 				PEAK_MAX_PIX = 50):
+    inData = numpy.double(inData)
     if(inMask is None):
         inMask = 1 + 0*inData
+    else:
+        inMask = numpy.double(inMask)
     peakListCheetah = numpy.zeros([50000, 4])
     szx, szy = inData.shape
     peak_cnt = peakFinderPythonLib.peakFinder(LAMBDA, SNR_ACCEPT,
