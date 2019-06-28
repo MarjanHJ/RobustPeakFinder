@@ -66,7 +66,8 @@ void quickSort( struct sortStruct dataVec[], int l, int r) {
 }
 
 bool isNotZero(int *inarray, int length){
-	for(int i=0;i<length;i++)
+	unsigned int i;
+	for(i=0;i<length;i++)
         if(inarray[i])
 			return(true);
 	return(false);
