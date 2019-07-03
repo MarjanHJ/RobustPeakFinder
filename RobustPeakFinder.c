@@ -436,8 +436,8 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 						peak_info[peak_cnt][i+PEAK_MAX_PIX] = win_peak_info_y[i] - WINSIDE + Glob_clm_ind  + 1; // y of founded pixeles of peak
 						peak_info[peak_cnt][i+2*PEAK_MAX_PIX] = win_peak_info_val[i]; // value
 					}
-					peak_info[peak_cnt][3*PEAK_MAX_PIX-2] = winModelValue;
-					peak_info[peak_cnt][3*PEAK_MAX_PIX-1] = win_estScale;
+					//peak_info[peak_cnt][3*PEAK_MAX_PIX-2] = winModelValue;
+					//peak_info[peak_cnt][3*PEAK_MAX_PIX-1] = win_estScale;
 					peak_info[peak_cnt][3*PEAK_MAX_PIX] = Peak_SNR; // SNR
 					peak_info[peak_cnt][3*PEAK_MAX_PIX+1] = peak_pix_cnt; // number of pixels
 
