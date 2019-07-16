@@ -24,3 +24,13 @@ Simply type in:
 ```
 make test
 ```
+
+# European XFEL example:
+This must be run on the maxwell cluster in order to access the example data
+Usage (on maxwell)
+```
+make
+module load anaconda3
+python RobustPeakFinder_Python_Test_for_EuXFEL.py
+```
+
