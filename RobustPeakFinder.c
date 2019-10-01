@@ -9,8 +9,8 @@
 #define MIN_STRUCT_PERCENT_C		0.5
 #define PEAK_MIN_PIX			1
 #define GLOBAL_THRESHOLD		0.0
-#define PEAK_THRESHOLD			10.0
-#define PAPR_ACCEPT_C			2.0
+#define PEAK_THRESHOLD			1.0
+#define PAPR_ACCEPT_C			3.0
 #define WIN_PERCENTAGE			0.8
 #define	WINSIDE_MAX			8
 #define	WINSIDE_MIN			4
@@ -156,13 +156,14 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 	unsigned int WINSIDE, peakSearchCounter, not_an_extermum_flag;
 	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM, PTCHSZ;
 	unsigned int i, j, peak_pix_cnt, pixcnt, peak_cnt, win_num_pix;
-	unsigned int lc_row_cnt, rcnt, Ptch_rcnt, rind, Glob_row_ind, curr_pix_x, CURX;
-	unsigned int lc_clm_cnt, ccnt, Ptch_ccnt, cind, Glob_clm_ind, curr_pix_y, CURY;
+	unsigned int rcnt, Ptch_rcnt, rind, Glob_row_ind, curr_pix_x, CURX;
+	unsigned int ccnt, Ptch_ccnt, cind, Glob_clm_ind, curr_pix_y, CURY;
 	unsigned int PtchRowStart, PtchRowEnd, PtchClmStart, PtchClmEnd;
 	unsigned int win_num_unmasked_pix;
 	unsigned int sumNoDataPix;
 	unsigned long pixelcounter, pixindex;
-
+	int lc_row_cnt, lc_clm_cnt;
+	
 	Glob_clm_ind = 0;
 	Glob_row_ind = 0;
 	
