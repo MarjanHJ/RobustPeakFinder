@@ -5,16 +5,16 @@
 #include <math.h>
 //#include <time.h>
 
-#define INFIMUM_C			30000.0
-#define MIN_STRUCT_PERCENT_C		0.5
+#define INFIMUM_C				30000.0
+#define MIN_STRUCT_PERCENT_C	0.5
 #define PEAK_MIN_PIX			1
-#define GLOBAL_THRESHOLD		0.0
+#define GLOBAL_THRESHOLD		-100.0
 #define PEAK_THRESHOLD			1.0
 #define PAPR_ACCEPT_C			3.0
 #define WIN_PERCENTAGE			0.8
-#define	WINSIDE_MAX			8
-#define	WINSIDE_MIN			4
-
+#define	WINSIDE_MAX				8
+#define	WINSIDE_MIN				4
+#define MAXIMUM_NUMBER_OF_PEAKS	1000
 
 void freeArray_d(double **a, unsigned int m) {
 	int i;
@@ -417,7 +417,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 
 				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / win_estScale;
 
-				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) ) {
+				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS) ) {
 
 					if (peak_cnt)
 						peak_info = (double **) realloc(peak_info, (peak_cnt+1)*sizeof(double *));
@@ -443,11 +443,13 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 					peak_info[peak_cnt][3*PEAK_MAX_PIX+1] = peak_pix_cnt; // number of pixels
 
 					//Complying with Cheetah's output
-					peakListCheetah[4*peak_cnt+0] = mass_x/mass_t - 0.5;
-					peakListCheetah[4*peak_cnt+1] = mass_y/mass_t - 0.5;
-					peakListCheetah[4*peak_cnt+2] = mass_t;
-					peakListCheetah[4*peak_cnt+3] = peak_pix_cnt;
-
+					peakListCheetah[6*peak_cnt+0] = mass_x/mass_t - 0.5;
+					peakListCheetah[6*peak_cnt+1] = mass_y/mass_t - 0.5;
+					peakListCheetah[6*peak_cnt+2] = mass_t;
+					peakListCheetah[6*peak_cnt+3] = peak_pix_cnt;
+					peakListCheetah[6*peak_cnt+4] = win_of_peak[WINSIDE][WINSIDE];
+					peakListCheetah[6*peak_cnt+5] = Peak_SNR;
+					
 					peak_cnt++;
 
 				}
