@@ -14,7 +14,7 @@
 #define WIN_PERCENTAGE			0.8
 #define	WINSIDE_MAX				8
 #define	WINSIDE_MIN				4
-#define MAXIMUM_NUMBER_OF_PEAKS	1000
+#define MAXIMUM_NUMBER_OF_PEAKS	1024
 
 void freeArray_d(double **a, unsigned int m) {
 	int i;
