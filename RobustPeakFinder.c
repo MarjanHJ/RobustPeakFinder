@@ -125,7 +125,7 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 extern "C" {
 #endif
 
-int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *originalMask, int XPIX, int YPIX, int PEAK_MAX_PIX, double *peakListCheetah) {
+int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *originalMask, int XPIX, int YPIX, int PEAK_MAX_PIX, int PEAK_MIN_PIX, double *peakListCheetah) {
 
 	int *inpData_mask;
 	int *win_peak_info_x;
