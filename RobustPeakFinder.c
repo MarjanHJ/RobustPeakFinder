@@ -7,7 +7,6 @@
 
 #define INFIMUM_C			30000.0
 #define MIN_STRUCT_PERCENT_C		0.5
-#define PEAK_MIN_PIX			1
 #define GLOBAL_THRESHOLD		-100.0
 #define PEAK_THRESHOLD			1.0
 #define PAPR_ACCEPT_C			3.0
