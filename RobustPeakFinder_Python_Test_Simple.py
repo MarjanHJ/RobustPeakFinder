@@ -12,6 +12,8 @@ import RobustPeakFinder_Python_Wrapper
 import numpy
 import scipy.stats
 
+numpy.set_printoptions(precision=2)
+
 def gkern(kernlen=21, nsig=3):
     lim = kernlen//2 + (kernlen % 2)/2
     x = numpy.linspace(-lim, lim, kernlen+1)
@@ -44,3 +46,4 @@ for cnt in numpy.arange(inputPeaksNumber):
 print("Pattern Ready! Calling the Robust Peak Finder...")
 outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData, inMask)
 print("RPF: There is " + str(outdata.shape[0]) + " peaks in this image!")
+print(outdata)
