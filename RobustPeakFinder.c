@@ -5,15 +5,15 @@
 #include <math.h>
 //#include <time.h>
 
-#define INFIMUM_C			30000.0
-#define MIN_STRUCT_PERCENT_C		0.5
+#define INFIMUM_C				30000.0
+#define MIN_STRUCT_PERCENT_C	0.5
 #define GLOBAL_THRESHOLD		-100.0
 #define PEAK_THRESHOLD			1.0
 #define PAPR_ACCEPT_C			3.0
-#define WIN_PERCENTAGE			0.8
-#define	WINSIDE_MAX			8
-#define	WINSIDE_MIN			4
-#define MAXIMUM_NUMBER_OF_PEAKS		1024
+#define WIN_PERCENTAGE			0.75
+#define	WINSIDE_MAX				8
+#define	WINSIDE_MIN				4
+#define MAXIMUM_NUMBER_OF_PEAKS	1024
 
 void freeArray_d(double **a, unsigned int m) {
 	int i;
@@ -162,6 +162,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 	unsigned int sumNoDataPix;
 	unsigned long pixelcounter, pixindex;
 	int lc_row_cnt, lc_clm_cnt;
+	unsigned char dist2Max;
 	
 	Glob_clm_ind = 0;
 	Glob_row_ind = 0;
@@ -172,7 +173,8 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 //double cpu_time_used_1=0;
 //start_1 = clock();
 
-	PTCHSZ = 40;// floor(sqrt(49 * PEAK_MAX_PIX));	//this means that size of a Peak should be less than 1% of a patch.
+	PTCHSZ = 64;// floor(sqrt(49 * PEAK_MAX_PIX));	//this means that size of a Peak should be less than 1% of a patch.
+		// we chose 64 for AGIPD detector where the ASIC size is 64
 	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//now XPIX may or may not be dividable by PTCHSZ
 	NUM_PATCHS_CLM = floor(YPIX/ PTCHSZ);
 	WINSIDE = WINSIDE_MAX;// floor((sqrt(9 * PEAK_MAX_PIX) - 1) / 2);
@@ -245,6 +247,9 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 				peakSearchCounter++;		//count the number of local maximums
 
 				//acquire the data around the extremum from original data.
+
+				if( (Glob_row_ind==1023) && (Glob_clm_ind==981) )
+					i=0;
 
 				//now assuming a window around the pixel in orignal inp-Data and original inp-Data_mask
 				//inp-Data_mask is global, copy a window of it around the pixel into win_of_peak_mask
@@ -326,7 +331,6 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 				if (win_of_peak[WINSIDE][WINSIDE] <= win_Proposed_Threshold)
 					continue;
 
-
 				//////////////////////////////// PAPR here:////////////////////////
 				win_num_pix = 0;
 				Signal_Power = 0;
@@ -359,7 +363,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 					pix_to_visit[i]=0;
 				//each pixel has a flag initially off, when flag gets one, this way we know that we have to visit this new pixel later.
 				pix_to_visit[peak_pix_cnt] = 1;			//here I have to visit centeral pixel
-
+				dist2Max = 0;
 				while (isNotZero(pix_to_visit, WIN_N)) {		//check if there are any pixels left to explore
 					for (pixcnt = 0 ; pixcnt <= peak_pix_cnt; pixcnt++) {	//for remaining flaged
 						if (pix_to_visit[pixcnt] == 1) {
@@ -372,16 +376,19 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 								for (lc_clm_cnt = 0 ; lc_clm_cnt < 3 ; lc_clm_cnt++) {
 									curr_pix_x = lc_row_cnt-1 + rind;
 									curr_pix_y = lc_clm_cnt-1 + cind;
+									dist2Max = sqrt((curr_pix_x-WINSIDE)*(curr_pix_x-WINSIDE)+(curr_pix_y-WINSIDE)*(curr_pix_y-WINSIDE));
 									if (win_of_peak_mask[curr_pix_x][curr_pix_y] == 1) {
 										win_of_peak_mask[curr_pix_x][curr_pix_y] = 0;
 										curr_pix_val = win_of_peak[curr_pix_x][curr_pix_y];
-										if ( curr_pix_val >= win_Proposed_Threshold) {
-											peak_pix_cnt++;
-											win_peak_info_x[peak_pix_cnt] = curr_pix_x;
-											win_peak_info_y[peak_pix_cnt] = curr_pix_y;
-											win_peak_info_val[peak_pix_cnt] = curr_pix_val;
-											sumPeakValues += curr_pix_val;
-											pix_to_visit[peak_pix_cnt] = 1;
+										if ( curr_pix_val >= win_of_peak[WINSIDE][WINSIDE]*exp(-dist2Max*dist2Max/2)) {
+											if ( curr_pix_val >= win_Proposed_Threshold) {
+												peak_pix_cnt++;
+												win_peak_info_x[peak_pix_cnt] = curr_pix_x;
+												win_peak_info_y[peak_pix_cnt] = curr_pix_y;
+												win_peak_info_val[peak_pix_cnt] = curr_pix_val;
+												sumPeakValues += curr_pix_val;
+												pix_to_visit[peak_pix_cnt] = 1;
+											}
 										}
 									}
 								}
