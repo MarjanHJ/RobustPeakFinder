@@ -376,11 +376,11 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 								for (lc_clm_cnt = 0 ; lc_clm_cnt < 3 ; lc_clm_cnt++) {
 									curr_pix_x = lc_row_cnt-1 + rind;
 									curr_pix_y = lc_clm_cnt-1 + cind;
-									dist2Max = sqrt((curr_pix_x-WINSIDE)*(curr_pix_x-WINSIDE)+(curr_pix_y-WINSIDE)*(curr_pix_y-WINSIDE));
+									dist2Max = (curr_pix_x-WINSIDE)*(curr_pix_x-WINSIDE)+(curr_pix_y-WINSIDE)*(curr_pix_y-WINSIDE);
 									if (win_of_peak_mask[curr_pix_x][curr_pix_y] == 1) {
 										win_of_peak_mask[curr_pix_x][curr_pix_y] = 0;
 										curr_pix_val = win_of_peak[curr_pix_x][curr_pix_y];
-										if ( curr_pix_val >= win_of_peak[WINSIDE][WINSIDE]*exp(-dist2Max*dist2Max/2)) {
+										if ( curr_pix_val >= win_of_peak[WINSIDE][WINSIDE]*exp(-dist2Max/2)) {
 											if ( curr_pix_val >= win_Proposed_Threshold) {
 												peak_pix_cnt++;
 												win_peak_info_x[peak_pix_cnt] = curr_pix_x;
