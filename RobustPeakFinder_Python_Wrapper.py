@@ -14,7 +14,7 @@ SNR_ACCEPT: Traditionally, SNR is one of the factors to reject bad peakListCheet
 PEAK_MAX_PIX: maximum number of pixels in a peak.
 		default: 50
 PEAK_MIN_PIX: Minimum number of pixels in a peak.
-		default: 50		
+		default: 1		
 
 Output:
 peakListCheetah is a numpy 2D-array in the style of Cheetah's output.
