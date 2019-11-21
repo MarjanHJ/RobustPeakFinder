@@ -5,14 +5,14 @@ A C Library for Robust Peak Finding in 2D images with Python/MATLAB Wrapper. The
 The RobustPeakFinder.c is writetn in C language and can be used to detect Bragg peaks in a 2D diffraction pattern or to count peaks in any other image. 
 
 # A Note on the Bad Pixel Mask
-for users in EuropeanXFEL - AGIPD detector, since the calibration ignores the variance in Analog values, they may end up as negative numbers. Statistically speaking, it is still a valid number and must be considered in the analysis. However, this usually happens to bad pixels. As such giving the bad pixels as the input is necessary.
+for users in EuropeanXFEL, SPB and MID - which use 1Mp AGIPD detectors -, since the calibration ignores the variance in Analog values, they may end up as negative numbers. Statistically speaking, it is still a valid number and must be considered in the analysis. However, this usually happens to bad pixels. As such giving the bad pixel mask in the input is necessary.
 
 # Compilation into shared library
-Run the following command to generate a shared library .so:
+Run the following command to generate a shared library RobustPeakFinder.so:
 ```
 make
 ```
-**Note**: Uncomenting the first line of the C file also do the task.
+**Note**: using the first line of the C file also does the task.
 # Usage from Python
 A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py. Tha wrapper will be looking for the .so shared library file.
 
