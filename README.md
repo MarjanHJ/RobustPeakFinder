@@ -1,5 +1,5 @@
 # RobustPeakFinder
-A C Library for Robust Peak Finding in 2D images with Python/MATLAB Wrapper. The relevant paper can be found [here](http://scripts.iucr.org/cgi-bin/paper?S1600576717014340)
+A C Library for Robust Peak Finding in 2D images with Python Wrapper. The relevant paper can be found [here](http://scripts.iucr.org/cgi-bin/paper?S1600576717014340)
 
 # Introduction
 The RobustPeakFinder.c is writetn in C language and can be used to detect Bragg peaks in a 2D diffraction pattern or to count peaks in any other image. 
