@@ -248,9 +248,6 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 
 				//acquire the data around the extremum from original data.
 
-				if( (Glob_row_ind==1023) && (Glob_clm_ind==981) )
-					i=0;
-
 				//now assuming a window around the pixel in orignal inp-Data and original inp-Data_mask
 				//inp-Data_mask is global, copy a window of it around the pixel into win_of_peak_mask
 				//later will update the win_of_peak_mask and put it back into inp-Data_mask
