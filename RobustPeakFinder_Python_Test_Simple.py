@@ -12,7 +12,7 @@ import RobustPeakFinder_Python_Wrapper
 import numpy
 import scipy.stats
 
-numpy.set_printoptions(precision=2)
+numpy.set_printoptions(precision=2, suppress=True)
 
 def gkern(kernlen=21, nsig=3):
     lim = kernlen//2 + (kernlen % 2)/2
@@ -28,22 +28,22 @@ inputPeaksNumber = 30
 
 print("Generating a pattern with " + str(inputPeaksNumber) + " peaks...")
 
-inData = numpy.floor(30 * numpy.random.rand(XSZ, YSZ))
+inData = 10 + numpy.floor(10 * numpy.random.randn(XSZ, YSZ))
 inMask = 1 + 0*inData
 randomLocations = XSZ/2 + numpy.floor(XSZ*0.8*(numpy.random.rand(2,inputPeaksNumber) - 0.5))
-for cnt in numpy.arange(inputPeaksNumber):	
-	bellShapedCurve = 1000*gkern(WINSIZE, nsig = 1)
-	winXStart = (randomLocations[0, cnt] - (WINSIZE-1)/2).astype(numpy.int)
-	winXEnd = (randomLocations[0, cnt] + (WINSIZE+1)/2).astype(numpy.int)
-	winYStart = (randomLocations[1, cnt] - (WINSIZE-1)/2).astype(numpy.int)
-	winYEnd = (randomLocations[1, cnt] + (WINSIZE+1)/2).astype(numpy.int)
-	inData[ winXStart : winXEnd, winYStart : winYEnd ] += bellShapedCurve;
-	if (cnt == 25):
-		print("Masking 5 peaks...")
-	if (cnt > 25):
-		inMask[ winXStart : winXEnd, winYStart : winYEnd ] = 0;
-	
+for cnt in numpy.arange(inputPeaksNumber):    
+    bellShapedCurve = 1000*gkern(WINSIZE, nsig = 1)
+    winXStart = (randomLocations[0, cnt] - (WINSIZE-1)/2).astype(numpy.int)
+    winXEnd = (randomLocations[0, cnt] + (WINSIZE+1)/2).astype(numpy.int)
+    winYStart = (randomLocations[1, cnt] - (WINSIZE-1)/2).astype(numpy.int)
+    winYEnd = (randomLocations[1, cnt] + (WINSIZE+1)/2).astype(numpy.int)
+    inData[ winXStart : winXEnd, winYStart : winYEnd ] += bellShapedCurve;
+    if (cnt == 25):
+        print("Masking 5 peaks...")
+    if (cnt > 25):
+        inMask[ winXStart : winXEnd, winYStart : winYEnd ] = 0;
+    
 print("Pattern Ready! Calling the Robust Peak Finder...")
-outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData, inMask)
+outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, inMask = inMask, SNR_ACCEPT = 8.0, MAXIMUM_NUMBER_OF_PEAKS = 1024)
 print("RPF: There is " + str(outdata.shape[0]) + " peaks in this image!")
 print(outdata)
