@@ -12,7 +12,7 @@ Run the following command to generate a shared library RobustPeakFinder.so:
 ```
 make
 ```
-**Note**: using the first line of the C file also does the task.
+**Note**: using the first line of the C file also compiles the library.
 # Usage from Python
 A Python wrapper is written in the file RobustPeakFinder_Python_Wrapper.py. Tha wrapper will be looking for the .so shared library file.
 

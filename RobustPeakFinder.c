@@ -7,13 +7,12 @@
 
 #define INFIMUM_C		30000.0
 #define MIN_STRUCT_PERCENT_C	0.5
-#define GLOBAL_THRESHOLD	-100.0
+#define GLOBAL_THRESHOLD	-10000.0
 #define PEAK_THRESHOLD		1.0
-#define PAPR_ACCEPT_C		3.0
+#define PAPR_ACCEPT_C		4.0
 #define WIN_PERCENTAGE		0.75
-#define	WINSIDE_MAX		8
-#define	WINSIDE_MIN		4
-#define MAXIMUM_NUMBER_OF_PEAKS	1024
+#define	WINSIDE_MAX		13
+#define	WINSIDE_MIN		7
 
 void freeArray_d(double **a, unsigned int m) {
 	int i;
@@ -124,7 +123,7 @@ double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
 extern "C" {
 #endif
 
-int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *originalMask, int XPIX, int YPIX, int PEAK_MAX_PIX, int PEAK_MIN_PIX, double *peakListCheetah) {
+int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbProbMap, double *StdsMap, double *originalMask, double *thresholdMap, double *maxBiasMap, int XPIX, int YPIX, int PEAK_MAX_PIX, int PEAK_MIN_PIX, int MAXIMUM_NUMBER_OF_PEAKS, double *peakListCheetah) {
 
 	int *inpData_mask;
 	int *win_peak_info_x;
@@ -162,11 +161,11 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 	unsigned int sumNoDataPix;
 	unsigned long pixelcounter, pixindex;
 	int lc_row_cnt, lc_clm_cnt;
-	unsigned char dist2Max;
-	
+	unsigned char dist2Max, CrystFELFlag;
+
 	Glob_clm_ind = 0;
 	Glob_row_ind = 0;
-	
+
 	double **peak_info;
 	unsigned int peak_info_clm = PEAK_MAX_PIX*3+2;
 //clock_t start_1;
@@ -234,7 +233,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 					for (rcnt = PtchRowStart ; rcnt < PtchRowEnd ; rcnt++) {
 						pixindex = (Ptch_rcnt*PTCHSZ+rcnt) + (Ptch_ccnt*PTCHSZ+ccnt)*XPIX;
 						Pchimg_element = Origdata[pixindex];
-						if(Pchimg_element>=Pchimg_maximum && inpData_mask[pixindex]>0) {
+						if( (Pchimg_element>=Pchimg_maximum) && (inpData_mask[pixindex]>0) ) {
 							Pchimg_maximum = Pchimg_element;
 							Glob_row_ind = Ptch_rcnt*PTCHSZ + rcnt;   // global index of extermum
 							Glob_clm_ind = Ptch_ccnt*PTCHSZ + ccnt;
@@ -253,6 +252,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 				//later will update the win_of_peak_mask and put it back into inp-Data_mask
 				i = 0;
 				sumNoDataPix = 0;
+				CrystFELFlag = 0;
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
 
@@ -270,7 +270,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 						}
 
 						win_of_peak_vec[i] = win_of_peak[rcnt][ccnt];
-						win_of_peak_mask_vec[i] = win_of_peak_mask[rcnt][ccnt];		//maybe win_of_peak_mask_vec is unnevessary
+						win_of_peak_mask_vec[i] = win_of_peak_mask[rcnt][ccnt];		//maybe win_of_peak_mask_vec is unnecessary
 						if ((win_of_peak_mask_vec[i] == 0) || (win_of_peak_vec[i] <= GLOBAL_THRESHOLD))
 							sumNoDataPix++;
 						i++;
@@ -281,9 +281,12 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 
 				not_an_extermum_flag=0;
 				for (lc_row_cnt = -2 ; lc_row_cnt < 2 ; lc_row_cnt++)
-					for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++)
+					for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++) {
 						if ((win_of_peak[WINSIDE][WINSIDE] < win_of_peak[WINSIDE+lc_row_cnt][WINSIDE+lc_clm_cnt]) && (win_of_peak_mask[WINSIDE + lc_row_cnt][WINSIDE + lc_clm_cnt]==1))
 							not_an_extermum_flag=1;
+						if (win_of_peak_mask[WINSIDE + lc_row_cnt][WINSIDE + lc_clm_cnt] == 0)
+							CrystFELFlag = 1;
+					}
 
 				if(sumNoDataPix >= WIN_N*WIN_PERCENTAGE)
 					continue;
@@ -327,6 +330,10 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 
 				if (win_of_peak[WINSIDE][WINSIDE] <= win_Proposed_Threshold)
 					continue;
+				if (win_of_peak[WINSIDE][WINSIDE] <= winModelValue + thresholdMap[pixindex])
+					continue;
+				if (winModelValue > maxBiasMap[pixindex])
+					continue;
 
 				//////////////////////////////// PAPR here:////////////////////////
 				win_num_pix = 0;
@@ -342,6 +349,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 
 				if ((win_of_peak[WINSIDE][WINSIDE] - winModelValue) / Signal_Power <= PAPR_ACCEPT_C)
 					continue;
+
 				/////////////////////////////////////////////////////////////////
 
 				//now begin by the extremum and mark all the adjacent
@@ -418,10 +426,14 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 						}
 				win_estScale = sqrt(win_estScale/(win_num_unmasked_pix-1));
 
-				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / win_estScale;
+				win_Proposed_Threshold = LAMBDA_C*win_estScale + winModelValue;
+				if (Patch_Threshold < win_Proposed_Threshold)
+					Patch_Threshold = win_Proposed_Threshold;
 
-				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS) ) {
+				Peak_SNR = AbProbMap[pixindex]*(win_of_peak[WINSIDE][WINSIDE] - winModelValue) / (win_estScale+StdsMap[pixindex]);
 
+				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS) && (CrystFELFlag==0) ) {
+				//if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS)) {
 					if (peak_cnt)
 						peak_info = (double **) realloc(peak_info, (peak_cnt+1)*sizeof(double *));
 					peak_info[peak_cnt]=(double *) malloc( peak_info_clm*sizeof(double));
@@ -452,11 +464,8 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *ori
 					peakListCheetah[6*peak_cnt+3] = peak_pix_cnt;
 					peakListCheetah[6*peak_cnt+4] = win_of_peak[WINSIDE][WINSIDE];
 					peakListCheetah[6*peak_cnt+5] = Peak_SNR;
-					
 					peak_cnt++;
-
 				}
-
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
 						CURX = Glob_row_ind + rcnt - WINSIDE;
@@ -487,6 +496,7 @@ free(win_peak_info_x);
 free(win_peak_info_y);
 free(win_peak_info_val);
 free(pix_to_visit);
+
 
 return(peak_cnt);
 }
