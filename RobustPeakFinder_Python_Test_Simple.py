@@ -22,17 +22,29 @@ def gkern(kernlen=21, nsig=3):
 
 if __name__ == '__main__':    
     print('PID ->' + str(getpid()))
-    XSZ = 300
-    YSZ = 400
+    XSZ = 980
+    YSZ = 1023
     WINSIZE = 21
     inputPeaksNumber = 30
     print("Generating a pattern with " + str(inputPeaksNumber) + " peaks...")
 
-    inData = 300 + numpy.floor(50 * numpy.random.randn(XSZ, YSZ))
-    inMask = 1 + 0*inData
+    inData = numpy.zeros((XSZ, YSZ), dtype='float32')
+    
+    inMask = numpy.ones(inData.shape, dtype = 'uint8')
+    inMask[-1, :] = 0
+    inMask[ 0, :] = 0
+    inMask[ :, 0] = 0
+    inMask[:, -1] = 0
+    
+    for ccnt in range(inData.shape[1]):
+        for rcnt in range(inData.shape[0]):
+            inData[rcnt, ccnt] += 400*numpy.exp(-(((rcnt-512)**2+(ccnt-512)**2)**0.5 - 250)**2/(2*100**2))
+            inData[rcnt, ccnt] += 3*numpy.sqrt(inData[rcnt, ccnt])*numpy.random.randn(1)    
+    
+
     randomLocations = XSZ/2 + numpy.floor(XSZ*0.8*(numpy.random.rand(2,inputPeaksNumber) - 0.5))
     for cnt in numpy.arange(inputPeaksNumber):    
-        bellShapedCurve = 500*gkern(WINSIZE, nsig = 1)
+        bellShapedCurve = 400*gkern(WINSIZE, nsig = 1)
         winXStart = (randomLocations[0, cnt] - (WINSIZE-1)/2).astype(numpy.int)
         winXEnd = (randomLocations[0, cnt] + (WINSIZE+1)/2).astype(numpy.int)
         winYStart = (randomLocations[1, cnt] - (WINSIZE-1)/2).astype(numpy.int)
