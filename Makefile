@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -fPIC -Wall -O3 -g
+#CFLAGS = -fPIC -Wall -g
+CFLAGS = -fPIC -O3
 LDFLAGS = -shared
 RM = rm -rf
 TARGET_LIB = RobustPeakFinder.so
