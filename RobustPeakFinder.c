@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 //#include <time.h>
-#include "RobustGausFitLib.c"
+#include "./../RobustGausFitLib/RobustGausFitLib.c"
 
 void freeArray_f(float **a, unsigned int m) {
 	unsigned int i;
@@ -109,6 +109,8 @@ int peakFinder(	float *inData, unsigned char *inMask,
 
 	//we turn the image into patches to propose peaks,
 	//then, regardless of the patching, in each patch we check each proposed peak.
+	Glob_row_ind = 0;
+	Glob_clm_ind = 0;
 	peak_cnt = 0;
 	for ( Ptch_rcnt = 0; Ptch_rcnt < NUM_PATCHS_ROW ; Ptch_rcnt++) {
 		for ( Ptch_ccnt = 0; Ptch_ccnt < NUM_PATCHS_CLM; Ptch_ccnt++) {
@@ -144,6 +146,8 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						}
 					}
 				}
+				if(Pchimg_maximum <= 1)
+					break;
 				pixIndex = Glob_row_ind + Glob_clm_ind *XPIX;
 				
 				//if the patch maximum is masked or too small
