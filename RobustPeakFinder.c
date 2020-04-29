@@ -4,63 +4,20 @@
 #include <stdbool.h>
 #include <math.h>
 //#include <time.h>
+#include "./../RobustGausFitLib/RobustGausFitLib.c"
 
-#define INFIMUM_C		30000.0
-#define MIN_STRUCT_PERCENT_C	0.5
-#define GLOBAL_THRESHOLD	-10000.0
-#define PEAK_THRESHOLD		1.0
-#define PAPR_ACCEPT_C		4.0
-#define WIN_PERCENTAGE		0.75
-#define	WINSIDE_MAX		13
-#define	WINSIDE_MIN		7
-
-void freeArray_d(double **a, unsigned int m) {
-	int i;
+void freeArray_f(float **a, unsigned int m) {
+	unsigned int i;
 	for (i = 0; i < m; ++i)
 		free(a[i]);
 	free(a);
 }
 
-void freeArray_i(int **a, unsigned int m) {
-	int i;
+void freeArray_ub(unsigned char **a, unsigned int m) {
+	unsigned int i;
 	for (i = 0; i < m; ++i)
 		free(a[i]);
 	free(a);
-}
-
-struct sortStruct {
-    double vecData;
-    int indxs;
-};
-
-int partition( struct sortStruct dataVec[], int l, int r) {
-   double pivot;
-   int i, j;
-   struct sortStruct t;
-
-   pivot = dataVec[l].vecData;
-   i = l; j = r+1;
-   while(1)	{
-		do ++i; while( dataVec[i].vecData <= pivot && i <= r );
-		do --j; while( dataVec[j].vecData > pivot );
-		if( i >= j ) break;
-		t = dataVec[i];
-		dataVec[i] = dataVec[j];
-		dataVec[j] = t;
-   }
-   t = dataVec[l];
-   dataVec[l] = dataVec[j];
-   dataVec[j] = t;
-   return j;
-}
-
-void quickSort( struct sortStruct dataVec[], int l, int r) {
-   int j;
-   if( l < r ) {
-		j = partition( dataVec, l, r);
-		quickSort( dataVec, l, j-1);
-		quickSort( dataVec, j+1, r);
-   }
 }
 
 bool isNotZero(int *inarray, int length){
@@ -71,135 +28,83 @@ bool isNotZero(int *inarray, int length){
 	return(false);
 }
 
-double MSSEPeak(double *absRes, int WIN_N, double LAMBDA_C) {
-	int i;
-	int MSSE_FINITE_SAMPLE_BIAS;
-	double estScale;
-	double LAMBDA_CSq;
-	double cumulative_sum, cumulative_sum_perv;
-	MSSE_FINITE_SAMPLE_BIAS = floor(WIN_N/2);
-	if (MSSE_FINITE_SAMPLE_BIAS < 12)
-		MSSE_FINITE_SAMPLE_BIAS = 12;
-
-	estScale = INFIMUM_C;
-	LAMBDA_CSq = LAMBDA_C*LAMBDA_C;
-	cumulative_sum = 0;
-
-	for (i = 0; i < MSSE_FINITE_SAMPLE_BIAS; i++)	//finite sample bias of MSSE [RezaJMIV'06]
-		cumulative_sum += absRes[i]*absRes[i];
-	cumulative_sum_perv = cumulative_sum;
-	for (i = MSSE_FINITE_SAMPLE_BIAS; i < WIN_N; i++) {
-		if ( LAMBDA_CSq * cumulative_sum < (i-1)*absRes[i]*absRes[i])		// in (i-1), the 1 is the dimension of model
-			break;
-		cumulative_sum_perv = cumulative_sum;
-		cumulative_sum += absRes[i]*absRes[i];
-	}
-	estScale = floor(1.4*sqrt(cumulative_sum_perv / (i - 2)))+1;
-	return estScale;
-}
-
-////////////////// INPUTS //////////////////
-//All inputs are single scalers except for a input image **Origdata
-//GLOBAL_THRESHOLD    A Global Threshold
-//PEAK_MIN_PIX and PEAK_MAX_PIX : number of pixels in a peak
-//SNR_ACCEPT : acceptable SNR
-//Origdata : 2D Matrix of imput diffraction pattern
-//XPIX and YPIX : number of pixels in rows and coloumns of input image.
-
-////////////////// OUTPUTS //////////////////
-// peak_cnt is number of discovered peaks
-// peaks_cheetah is a flattened matrix output size : peak_cnt by 4
-
-////////////////// Local Peak_infor for other ML tasks ///////////////
-// Peak_info = Pointer to output matrix (whose abstract is provided inthe output of the functoin):
-// Rows are each peak and comloums are infor of each peak
-// coloumns : 1 : MAX_NUM_PEAKS_C are the X of each pixel of a peak
-//            MAX_NUM_PEAKS_C+1 : 2*MAX_NUM_PEAKS_C are the Y of each pixel of a peak
-//			  2*MAX_NUM_PEAKS_C+1 : 3*MAX_NUM_PEAKS_C are the Z of each pixel of a peak
-//			  3*MAX_NUM_PEAKS_C + 1 : SNR scalar value
-//            3*MAX_NUM_PEAKS_C + 2 : Number of pixels in a peaksudo apt-get install atom
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbProbMap, double *StdsMap, double *originalMask, double *thresholdMap, double *maxBiasMap, int XPIX, int YPIX, int PEAK_MAX_PIX, int PEAK_MIN_PIX, int MAXIMUM_NUMBER_OF_PEAKS, double *peakListCheetah) {
+int peakFinder(	float *inData, unsigned char *inMask,
+				float *SNRFactor, float *minPeakValMap, float *maxBackMeanMap, 
+				float *peakList, int MAXIMUM_NUMBER_OF_PEAKS,
+				float bckSNR, float pixPAPR,
+				int XPIX, int YPIX, int PTCHSZ,	
+				int PEAK_MIN_PIX, int PEAK_MAX_PIX) {
 
-	int *inpData_mask;
+	unsigned char *inpData_mask;
 	int *win_peak_info_x;
 	int *win_peak_info_y;
-	double *win_peak_info_val;
-	double *win_of_peak_vec;
-	int *win_of_peak_mask_vec;
+	float *win_peak_info_val;
+	float *win_of_peak_vec;
+	unsigned char *win_of_peak_mask_vec;
 	int *pix_to_visit;
-	double **win_of_peak;
-	int **win_of_peak_mask;
+	float **win_of_peak;
+	unsigned char **win_of_peak_mask;
 
-	struct sortStruct* sortVec;
+	float win_estScale;
+	float winModelValue;
+	float sumPeakValues;
+	float Peak_SNR;
+	float win_Proposed_Threshold;
+	float curr_pix_val;
+	float pixValue;
+	float Pchimg_maximum;
+	float Patch_Threshold;
+	float Signal_Power;
+	float modelParams[2];
+	float mass_x;
+	float mass_y;
+	float mass_t;
 
-	double win_estScale;
-	double winModelValue;
-	double sumPeakValues;
-	double Peak_SNR;
-	double win_Proposed_Threshold;
-	double curr_pix_val;
-	double Pchimg_element;
-	double Pchimg_maximum;
-	double Patch_Threshold;
-	double Signal_Power;
-	double sumWinData;
-	double win_Skew;
-	double tmpval;
-
-	unsigned int WINSIDE, peakSearchCounter, not_an_extermum_flag;
-	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM, PTCHSZ;
-	unsigned int i, j, peak_pix_cnt, pixcnt, peak_cnt, win_num_pix;
+	int lc_row_cnt, lc_clm_cnt;
+	unsigned int WINSIDE, not_an_extermum_flag;
+	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM;
+	unsigned int i, peak_pix_cnt, pixcnt, peak_cnt, win_num_pix;
 	unsigned int rcnt, Ptch_rcnt, rind, Glob_row_ind, curr_pix_x, CURX;
 	unsigned int ccnt, Ptch_ccnt, cind, Glob_clm_ind, curr_pix_y, CURY;
 	unsigned int PtchRowStart, PtchRowEnd, PtchClmStart, PtchClmEnd;
-	unsigned int win_num_unmasked_pix;
 	unsigned int sumNoDataPix;
-	unsigned long pixelcounter, pixindex;
-	int lc_row_cnt, lc_clm_cnt;
-	unsigned char dist2Max, CrystFELFlag;
+	unsigned long pixelcounter, pixIndex;
+	unsigned char dist2Max;
 
-	Glob_clm_ind = 0;
-	Glob_row_ind = 0;
-
-	double **peak_info;
-	unsigned int peak_info_clm = PEAK_MAX_PIX*3+2;
 //clock_t start_1;
-//double cpu_time_used_1=0;
+//float cpu_time_used_1=0;
 //start_1 = clock();
 
-	PTCHSZ = 64;// floor(sqrt(49 * PEAK_MAX_PIX));	//this means that size of a Peak should be less than 1% of a patch.
+	//PTCHSZ = 16;// floor(sqrt(49 * PEAK_MAX_PIX));	//this means that size of a Peak should be less than 1% of a patch.
 		// we chose 64 for AGIPD detector where the ASIC size is 64
 	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//now XPIX may or may not be dividable by PTCHSZ
 	NUM_PATCHS_CLM = floor(YPIX/ PTCHSZ);
-	WINSIDE = WINSIDE_MAX;// floor((sqrt(9 * PEAK_MAX_PIX) - 1) / 2);
+	WINSIDE = (int) floor(PTCHSZ/2)+1;
 	WINSZ = 2 * WINSIDE + 1;
 	WIN_N = WINSZ*WINSZ;
 
-	win_of_peak=(double **) malloc(WINSZ*sizeof(double *));
+	win_of_peak=(float **) malloc(WINSZ*sizeof(float *));
 	for(i=0;i<WINSZ;i++)
-		win_of_peak[i]=(double *) malloc(WINSZ*sizeof(double));
-	win_of_peak_mask=(int **) malloc(WINSZ*sizeof(int *));
+		win_of_peak[i]=(float *) malloc(WINSZ*sizeof(float));
+	win_of_peak_mask=(unsigned char **) malloc(WINSZ*sizeof(unsigned char *));
 	for(i=0;i<WINSZ;i++)
-		win_of_peak_mask[i]=(int *) malloc(WINSZ*sizeof(int));
-	inpData_mask=(int *) malloc(XPIX*YPIX*sizeof(int));
-	win_of_peak_vec = (double*) malloc(WIN_N * sizeof(double));
-	win_of_peak_mask_vec = (int*) malloc(WIN_N * sizeof(int));
-	sortVec = (struct sortStruct*) malloc(WIN_N * sizeof(struct sortStruct));
+		win_of_peak_mask[i]=(unsigned char *) malloc(WINSZ*sizeof(unsigned char));
+	inpData_mask=(unsigned char *) malloc(XPIX*YPIX*sizeof(unsigned char));
+	win_of_peak_vec = (float*) malloc(WIN_N * sizeof(float));
+	win_of_peak_mask_vec = (unsigned char*) malloc(WIN_N * sizeof(unsigned char));
 	win_peak_info_x = (int*) malloc(WIN_N * sizeof(int));
 	win_peak_info_y = (int*) malloc(WIN_N * sizeof(int));
-	win_peak_info_val = (double*) malloc(WIN_N * sizeof(double));
+	win_peak_info_val = (float*) malloc(WIN_N * sizeof(float));
 	pix_to_visit = (int*) malloc(WIN_N * sizeof(int));
-	peak_info = (double **) malloc(1*sizeof(double *));
 
 	for (pixelcounter=0; pixelcounter<XPIX*YPIX;pixelcounter++)
-		inpData_mask[pixelcounter]=originalMask[pixelcounter];
+		inpData_mask[pixelcounter]=inMask[pixelcounter];
 
-//cpu_time_used_1 += ((double) (clock() - start_1));
+//cpu_time_used_1 += ((float) (clock() - start_1));
 //cpu_time_used_1 = 0;
 
 	//we turn the image into patches to propose peaks,
@@ -223,27 +128,28 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbP
 			if (Ptch_rcnt == NUM_PATCHS_ROW - 1)
 				PtchRowEnd = PTCHSZ + XPIX - NUM_PATCHS_ROW*PTCHSZ;
 
-			Patch_Threshold = PEAK_THRESHOLD;
-			peakSearchCounter = 0;
-			Pchimg_maximum = INFIMUM_C;
-			while( Pchimg_maximum > Patch_Threshold) {  	//makes no difference
-
+			Patch_Threshold = 0;
+			Pchimg_maximum = Patch_Threshold + 1;
+			while( Patch_Threshold < Pchimg_maximum ) {
+			
 				Pchimg_maximum = 0;
 				for (ccnt = PtchClmStart ; ccnt < PtchClmEnd ; ccnt++) {
 					for (rcnt = PtchRowStart ; rcnt < PtchRowEnd ; rcnt++) {
-						pixindex = (Ptch_rcnt*PTCHSZ+rcnt) + (Ptch_ccnt*PTCHSZ+ccnt)*XPIX;
-						Pchimg_element = Origdata[pixindex];
-						if( (Pchimg_element>=Pchimg_maximum) && (inpData_mask[pixindex]>0) ) {
-							Pchimg_maximum = Pchimg_element;
+						pixIndex = (Ptch_rcnt*PTCHSZ+rcnt) + (Ptch_ccnt*PTCHSZ+ccnt)*XPIX;
+						pixValue = inData[pixIndex];
+						if( (pixValue>=Pchimg_maximum) && (inpData_mask[pixIndex]>0) ) {
+							Pchimg_maximum = pixValue;
 							Glob_row_ind = Ptch_rcnt*PTCHSZ + rcnt;   // global index of extermum
 							Glob_clm_ind = Ptch_ccnt*PTCHSZ + ccnt;
 						}
 					}
 				}
-				if	(Pchimg_maximum <= PEAK_THRESHOLD)	//if a pixel was visited before or masked out for some resaon
-					continue;
-
-				peakSearchCounter++;		//count the number of local maximums
+				pixIndex = Glob_row_ind + Glob_clm_ind *XPIX;
+				
+				//if the patch maximum is masked or too small
+				if ( (Pchimg_maximum <= Patch_Threshold) ||
+					 (Pchimg_maximum <= minPeakValMap[pixIndex]) )
+						break;
 
 				//acquire the data around the extremum from original data.
 
@@ -252,7 +158,7 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbP
 				//later will update the win_of_peak_mask and put it back into inp-Data_mask
 				i = 0;
 				sumNoDataPix = 0;
-				CrystFELFlag = 0;
+				
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
 
@@ -264,75 +170,48 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbP
 							win_of_peak_mask[rcnt][ccnt] = 0;
 						}
 						else {
-							pixindex = CURX + CURY*XPIX;
-							win_of_peak[rcnt][ccnt] = Origdata[pixindex];
-							win_of_peak_mask[rcnt][ccnt] = inpData_mask[pixindex];
+							win_of_peak[rcnt][ccnt] = inData[CURX + CURY*XPIX];
+							win_of_peak_mask[rcnt][ccnt] = inpData_mask[CURX + CURY*XPIX];
 						}
 
 						win_of_peak_vec[i] = win_of_peak[rcnt][ccnt];
 						win_of_peak_mask_vec[i] = win_of_peak_mask[rcnt][ccnt];		//maybe win_of_peak_mask_vec is unnecessary
-						if ((win_of_peak_mask_vec[i] == 0) || (win_of_peak_vec[i] <= GLOBAL_THRESHOLD))
+						if (win_of_peak_mask_vec[i] == 0)
 							sumNoDataPix++;
 						i++;
 					}
 				}
-				pixindex = Glob_row_ind + Glob_clm_ind *XPIX;
-				inpData_mask[pixindex]=0;
+				inpData_mask[pixIndex]=0;
+				// 78: we would love to capture the background of a bragg peak that 
+				// can spread at lest to one pixel close 
+				// to the local maximum. Lets say all 9 pixels are occupied. 
+				// Then at least thress pixels away must be present for background estimation. So that is:
+				// (9*4)-2 + (7*4)-2 + (5*4)-2 = 78 data points
+				if(WIN_N - sumNoDataPix < 78)	
+					continue;
 
 				not_an_extermum_flag=0;
 				for (lc_row_cnt = -2 ; lc_row_cnt < 2 ; lc_row_cnt++)
-					for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++) {
-						if ((win_of_peak[WINSIDE][WINSIDE] < win_of_peak[WINSIDE+lc_row_cnt][WINSIDE+lc_clm_cnt]) && (win_of_peak_mask[WINSIDE + lc_row_cnt][WINSIDE + lc_clm_cnt]==1))
+					for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++) 
+						if (win_of_peak[WINSIDE][WINSIDE] < win_of_peak[WINSIDE+lc_row_cnt][WINSIDE+lc_clm_cnt])
 							not_an_extermum_flag=1;
-						if (win_of_peak_mask[WINSIDE + lc_row_cnt][WINSIDE + lc_clm_cnt] == 0)
-							CrystFELFlag = 1;
-					}
-
-				if(sumNoDataPix >= WIN_N*WIN_PERCENTAGE)
-					continue;
-
-				sumNoDataPix = 0;
-				for (i=0;i<WIN_N;i++)
-					if (win_of_peak_vec[i] <= GLOBAL_THRESHOLD) {
-						sumNoDataPix++;
-						win_of_peak_vec[i] = 2 * INFIMUM_C;
-					}
-
-				for (i = 0; i < WIN_N; i++) {
-					sortVec[i].vecData  = win_of_peak_vec[i];
-					sortVec[i].indxs = i;
-				}
-				quickSort(sortVec,0,WIN_N-1);
-				winModelValue = sortVec[(int)floor(MIN_STRUCT_PERCENT_C*(double)(WIN_N - sumNoDataPix + 1))].vecData; //again could be median
-				winModelValue += ((double) rand() / (RAND_MAX))/5;
-
-				for (i = 0; i < WIN_N; i++) {
-					if (sortVec[i].vecData > winModelValue)
-						sortVec[i].vecData = sortVec[i].vecData - winModelValue;
-					else
-						sortVec[i].vecData = winModelValue - sortVec[i].vecData;
-					sortVec[i].indxs = i;
-				}
-				quickSort(sortVec,0,WIN_N-1);
-				for (i = 0; i < WIN_N; i++) {
-					win_of_peak_vec[i] = sortVec[i].vecData;
-				}
-
-				win_estScale = MSSEPeak(win_of_peak_vec, WIN_N - sumNoDataPix + 1, LAMBDA_C);
-
-				win_Proposed_Threshold = LAMBDA_C*win_estScale + winModelValue;
-
-				if (Patch_Threshold < win_Proposed_Threshold)
-					Patch_Threshold = win_Proposed_Threshold;
-
 				if (not_an_extermum_flag>0)
 					continue;
 
+				
+				RobustSingleGaussianVec(win_of_peak_vec, modelParams, WIN_N, 0.5, 0.4, bckSNR);
+				winModelValue = modelParams[0];
+				win_estScale = modelParams[1];
+				
+				win_Proposed_Threshold = bckSNR*win_estScale + winModelValue;
+				
+				if (Patch_Threshold < win_Proposed_Threshold)
+					Patch_Threshold = win_Proposed_Threshold;
+
 				if (win_of_peak[WINSIDE][WINSIDE] <= win_Proposed_Threshold)
 					continue;
-				if (win_of_peak[WINSIDE][WINSIDE] <= winModelValue + thresholdMap[pixindex])
-					continue;
-				if (winModelValue > maxBiasMap[pixindex])
+
+				if (winModelValue > maxBackMeanMap[pixIndex])
 					continue;
 
 				//////////////////////////////// PAPR here:////////////////////////
@@ -340,25 +219,22 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbP
 				Signal_Power = 0;
 				for (rcnt = 0; rcnt < WINSZ; rcnt++)
 					for (ccnt = 0; ccnt < WINSZ; ccnt++) {
-						if (win_of_peak[rcnt][ccnt] > GLOBAL_THRESHOLD && win_of_peak_mask[rcnt][ccnt] == 1) {
+						if (win_of_peak[rcnt][ccnt] > (winModelValue - bckSNR*win_estScale) && 
+							win_of_peak_mask[rcnt][ccnt] == 1) {
 							win_num_pix++;
 							Signal_Power += (win_of_peak[rcnt][ccnt] - winModelValue)*(win_of_peak[rcnt][ccnt] - winModelValue);
 						}
 					}
 				Signal_Power = sqrt(Signal_Power / win_num_pix);
-
-				if ((win_of_peak[WINSIDE][WINSIDE] - winModelValue) / Signal_Power <= PAPR_ACCEPT_C)
+				if ( ((win_of_peak[WINSIDE][WINSIDE] - winModelValue) / Signal_Power) <= pixPAPR)
 					continue;
-
 				/////////////////////////////////////////////////////////////////
-
 				//now begin by the extremum and mark all the adjacent
 				//pixels that are above the proposed Threshold
 
 				peak_pix_cnt = 0; //number of pixels of a peak
 
 				//we go through adjacent pixels step by step and add them to the peak if they were above threshhold
-
 				win_peak_info_x[peak_pix_cnt] = WINSIDE;	//this is the index of the center pixel
 				win_peak_info_y[peak_pix_cnt] = WINSIDE;
 				win_peak_info_val[peak_pix_cnt] = win_of_peak[WINSIDE][WINSIDE];
@@ -402,101 +278,59 @@ int peakFinder(double LAMBDA_C, double SNR_ACCEPT, double *Origdata, double *AbP
 					}
 				}
 				peak_pix_cnt++; // because counting starts from zero
+				
+				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / (bckSNR * win_estScale);
+				Peak_SNR = SNRFactor[pixIndex]*Peak_SNR;	//yes! you need probability map for bad pixel mask
+				// This can be learned over background runs.
 
-				/////////////////////////////////////////////////////////////
-				//////////// Perfomr 1 step of MeanShift ////////////////////
-				sumWinData = 0;
-				win_num_unmasked_pix = 0;
-				for (rcnt = 0; rcnt < WINSZ; rcnt++)
-					for (ccnt = 0; ccnt < WINSZ; ccnt++)
-						if ((win_of_peak[rcnt][ccnt]<win_Proposed_Threshold) && (win_of_peak[rcnt][ccnt]>GLOBAL_THRESHOLD)) {
-							win_num_unmasked_pix++;
-							sumWinData += win_of_peak[rcnt][ccnt];
-						}
-				winModelValue = sumWinData/ win_num_unmasked_pix;
-
-				win_estScale = 0;
-				win_Skew = 0;
-				for (rcnt = 0; rcnt < WINSZ; rcnt++)
-					for (ccnt = 0; ccnt < WINSZ; ccnt++)
-						if ((win_of_peak[rcnt][ccnt]<win_Proposed_Threshold) && (win_of_peak[rcnt][ccnt]>GLOBAL_THRESHOLD)) {
-							tmpval = win_of_peak[rcnt][ccnt] - winModelValue;
-							win_estScale += tmpval*tmpval;
-							win_Skew += tmpval*tmpval*tmpval;
-						}
-				win_estScale = sqrt(win_estScale/(win_num_unmasked_pix-1));
-
-				win_Proposed_Threshold = LAMBDA_C*win_estScale + winModelValue;
-				if (Patch_Threshold < win_Proposed_Threshold)
-					Patch_Threshold = win_Proposed_Threshold;
-
-				Peak_SNR = AbProbMap[pixindex]*(win_of_peak[WINSIDE][WINSIDE] - winModelValue) / (win_estScale+StdsMap[pixindex]);
-
-				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS) && (CrystFELFlag==0) ) {
-				//if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && (Peak_SNR > SNR_ACCEPT) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS)) {
-					if (peak_cnt)
-						peak_info = (double **) realloc(peak_info, (peak_cnt+1)*sizeof(double *));
-					peak_info[peak_cnt]=(double *) malloc( peak_info_clm*sizeof(double));
-					for(j=0;j<peak_info_clm;j++)
-						peak_info[peak_cnt][j]=0;
-
-					//Our own Peaklist
-					double mass_x=0;
-					double mass_y=0;
-					double mass_t=0;
+				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && 
+					 (Peak_SNR > 1) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS)) {
+					mass_x = 0;
+					mass_y = 0;
+					mass_t = 0;
 					for(i=0;i<peak_pix_cnt;i++) {
 						mass_x += (win_peak_info_x[i] - WINSIDE + Glob_row_ind + 1)*(win_peak_info_val[i]);
 						mass_y += (win_peak_info_y[i] - WINSIDE + Glob_clm_ind + 1)*(win_peak_info_val[i]);
 						mass_t += win_peak_info_val[i];
-						peak_info[peak_cnt][i] = win_peak_info_x[i] - WINSIDE + Glob_row_ind + 1; // global x of founded pixeles of peak
-						peak_info[peak_cnt][i+PEAK_MAX_PIX] = win_peak_info_y[i] - WINSIDE + Glob_clm_ind  + 1; // y of founded pixeles of peak
-						peak_info[peak_cnt][i+2*PEAK_MAX_PIX] = win_peak_info_val[i]; // value
 					}
-					//peak_info[peak_cnt][3*PEAK_MAX_PIX-2] = winModelValue;
-					//peak_info[peak_cnt][3*PEAK_MAX_PIX-1] = win_estScale;
-					peak_info[peak_cnt][3*PEAK_MAX_PIX] = Peak_SNR; // SNR
-					peak_info[peak_cnt][3*PEAK_MAX_PIX+1] = peak_pix_cnt; // number of pixels
-
 					//Complying with Cheetah's output
-					peakListCheetah[6*peak_cnt+0] = mass_x/mass_t - 0.5;
-					peakListCheetah[6*peak_cnt+1] = mass_y/mass_t - 0.5;
-					peakListCheetah[6*peak_cnt+2] = mass_t;
-					peakListCheetah[6*peak_cnt+3] = peak_pix_cnt;
-					peakListCheetah[6*peak_cnt+4] = win_of_peak[WINSIDE][WINSIDE];
-					peakListCheetah[6*peak_cnt+5] = Peak_SNR;
+					peakList[6*peak_cnt+0] = mass_x/mass_t;
+					peakList[6*peak_cnt+1] = mass_y/mass_t;
+					peakList[6*peak_cnt+2] = mass_t;
+					peakList[6*peak_cnt+3] = peak_pix_cnt;
+					peakList[6*peak_cnt+4] = win_of_peak[WINSIDE][WINSIDE];
+					peakList[6*peak_cnt+5] = Peak_SNR;
 					peak_cnt++;
 				}
+
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
 						CURX = Glob_row_ind + rcnt - WINSIDE;
 						CURY = Glob_clm_ind + ccnt - WINSIDE;
 						if ((CURX >= 0) && (CURX < XPIX) && (CURY >= 0) && (CURY < YPIX)) {
-							pixindex = CURX + CURY*XPIX;
-							inpData_mask[pixindex] = win_of_peak_mask[rcnt][ccnt];
+							pixIndex = CURX + CURY*XPIX;
+							inpData_mask[pixIndex] = win_of_peak_mask[rcnt][ccnt];
 						}
 					}
 				}
-
 			}	//end of while(peaks)
-//cpu_time_used_1 += ((double) (clock() - start_1));
+//cpu_time_used_1 += ((float) (clock() - start_1));
 
 		} //end of for pathes_y
 	} //end of for pathes_x
 //cpu_time_used_1 = cpu_time_used_1/CLOCKS_PER_SEC;
 
-freeArray_d(win_of_peak,WINSZ);
-freeArray_i(win_of_peak_mask,WINSZ);
-freeArray_d(peak_info, peak_cnt);
+freeArray_f(win_of_peak, WINSZ);
+freeArray_ub(win_of_peak_mask, WINSZ);
 
 free(inpData_mask);
 free(win_of_peak_vec);
 free(win_of_peak_mask_vec);
-free(sortVec);
+
 free(win_peak_info_x);
 free(win_peak_info_y);
 free(win_peak_info_val);
 free(pix_to_visit);
-
 
 return(peak_cnt);
 }
