@@ -39,7 +39,7 @@ You can get the number of peaks by YOUROUTPUTNAME.shape[0]
 
 import numpy
 import ctypes
-peakFinderPythonLib = ctypes.cdll.LoadLibrary("./../RPFOrig/Debug/libRPFOrig.so")
+peakFinderPythonLib = ctypes.cdll.LoadLibrary("RobustPeakFinder.so")
                 
 '''
 int peakFinder(	float *inData, float *inMask,
