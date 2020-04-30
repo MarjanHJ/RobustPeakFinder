@@ -38,7 +38,7 @@ if __name__ == '__main__':
     
     for ccnt in range(inData.shape[1]):
         for rcnt in range(inData.shape[0]):
-            inData[rcnt, ccnt] += 400*numpy.exp(-(((rcnt-512)**2+(ccnt-512)**2)**0.5 - 250)**2/(2*100**2))
+            inData[rcnt, ccnt] += 400*numpy.exp(-(((rcnt-512)**2+(ccnt-512)**2)**0.5 - 250)**2/(2*75**2))
             inData[rcnt, ccnt] += 3*numpy.sqrt(inData[rcnt, ccnt])*numpy.random.randn(1)    
     
 
@@ -54,12 +54,15 @@ if __name__ == '__main__':
             print("Masking 5 peaks...")
         if (cnt > 25):
             inMask[ winXStart : winXEnd, winYStart : winYEnd ] = 0;
-        
+
     print("Pattern Ready! Calling the Robust Peak Finder...")
     outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, inMask = inMask, bckSNR = 5.0, MAXIMUM_NUMBER_OF_PEAKS = 1024)
     print("RPF: There is " + str(outdata.shape[0]) + " peaks in this image!")
-    print(outdata)
+    print(outdata[:, :2].T)
+    print(randomLocations)
 
-    plt.imshow(inData*inMask)
+    plt.imshow((inData*inMask).T)
+    plt.scatter(randomLocations[0], randomLocations[1], s=80, facecolors='none', edgecolors='g')
     plt.scatter(outdata[:, 0], outdata[:, 1], s=80, facecolors='none', edgecolors='r')
     plt.show()
+    exit()
