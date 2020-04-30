@@ -298,8 +298,8 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						mass_t += win_peak_info_val[i];
 					}
 					//Complying with Cheetah's output
-					peakList[6*peak_cnt+0] = mass_x/mass_t;
-					peakList[6*peak_cnt+1] = mass_y/mass_t;
+					peakList[6*peak_cnt+0] = mass_x/mass_t - 1;
+					peakList[6*peak_cnt+1] = mass_y/mass_t - 1;
 					peakList[6*peak_cnt+2] = mass_t;
 					peakList[6*peak_cnt+3] = peak_pix_cnt;
 					peakList[6*peak_cnt+4] = win_of_peak[WINSIDE][WINSIDE];
