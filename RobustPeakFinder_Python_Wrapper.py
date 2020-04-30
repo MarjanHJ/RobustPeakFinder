@@ -103,6 +103,7 @@ def robustPeakFinderPyFunc(inData,
                         bckSNR, pixPAPR,
                         XPIX, YPIX, PTCHSZ, PEAK_MIN_PIX, PEAK_MAX_PIX)
 
-    peakListCheetah[:, 0], peakListCheetah[:, 1] = peakListCheetah[:, 1], peakListCheetah[:, 0].copy()                    
+    #peakListCheetah[:, 0], peakListCheetah[:, 1] = peakListCheetah[:, 1], peakListCheetah[:, 0].copy()
+    peakListCheetah[:, 0], peakListCheetah[:, 1] = peakListCheetah[:, 0] - 1, peakListCheetah[:, 1] - 1
                         
     return peakListCheetah[:peak_cnt]
