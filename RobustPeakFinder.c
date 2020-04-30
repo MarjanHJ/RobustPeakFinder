@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 //#include <time.h>
-#include "./../RobustGausFitLib/RobustGausFitLib.c"
+#include "./../RGFLib/RobustGausFitLib.c"
 
 void freeArray_f(float **a, unsigned int m) {
 	unsigned int i;
