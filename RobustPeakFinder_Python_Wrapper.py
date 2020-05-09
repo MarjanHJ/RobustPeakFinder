@@ -96,11 +96,19 @@ def robustPeakFinderPyFunc(inData,
     inData = inData.astype('float32')
     
     peakListCheetah = numpy.zeros([MAXIMUM_NUMBER_OF_PEAKS, 6], dtype='float32')    
-    
-    peak_cnt = peakFinderPythonLib.peakFinder(inData.flatten('F'), inMask.flatten('F'), 
-                        SNRFactor.flatten('F'), minPeakValMap.flatten('F'), maxBackMeanMap.flatten('F'),
-                        peakListCheetah, MAXIMUM_NUMBER_OF_PEAKS,
-                        bckSNR, pixPAPR,
-                        XPIX, YPIX, PTCHSZ, PEAK_MIN_PIX, PEAK_MAX_PIX)
+
+    peak_cnt = peakFinderPythonLib.peakFinder(inData.flatten('F'), 
+                                                inMask.flatten('F'), 
+                                                SNRFactor.flatten('F'), 
+                                                minPeakValMap.flatten('F'), 
+                                                maxBackMeanMap.flatten('F'),
+                                                peakListCheetah, 
+                                                MAXIMUM_NUMBER_OF_PEAKS,
+                                                bckSNR, pixPAPR,
+                                                XPIX, 
+                                                YPIX, 
+                                                PTCHSZ, 
+                                                PEAK_MIN_PIX, 
+                                                PEAK_MAX_PIX)
 
     return peakListCheetah[:peak_cnt]
