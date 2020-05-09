@@ -22,8 +22,8 @@ def gkern(kernlen=21, nsig=3):
 
 if __name__ == '__main__':    
     print('PID ->' + str(getpid()))
-    XSZ = 980
-    YSZ = 1023
+    XSZ = 1020
+    YSZ = 980
     WINSIZE = 21
     inputPeaksNumber = 30
     print("Generating a pattern with " + str(inputPeaksNumber) + " peaks...")
@@ -50,19 +50,17 @@ if __name__ == '__main__':
         winYStart = (randomLocations[1, cnt] - (WINSIZE-1)/2).astype(numpy.int)
         winYEnd = (randomLocations[1, cnt] + (WINSIZE+1)/2).astype(numpy.int)
         inData[ winXStart : winXEnd, winYStart : winYEnd ] += bellShapedCurve;
-        if (cnt == 25):
-            print("Masking 5 peaks...")
-        if (cnt > 25):
+        if (cnt >= 25):
             inMask[ winXStart : winXEnd, winYStart : winYEnd ] = 0;
 
     print("Pattern Ready! Calling the Robust Peak Finder...")
-    outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, inMask = inMask, bckSNR = 5.0, MAXIMUM_NUMBER_OF_PEAKS = 1024)
+    outdata = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, inMask = inMask)
     print("RPF: There is " + str(outdata.shape[0]) + " peaks in this image!")
     print(outdata[:, :2].T)
     print(randomLocations)
 
     plt.imshow((inData*inMask).T)
-    plt.scatter(randomLocations[0], randomLocations[1], s=80, facecolors='none', edgecolors='g')
-    plt.scatter(outdata[:, 0], outdata[:, 1], s=80, facecolors='none', edgecolors='r')
+    plt.scatter(randomLocations[0], randomLocations[1], s=40, facecolors='none', edgecolors='c')
+    plt.scatter(outdata[:, 0], outdata[:, 1], s=40, facecolors='none', edgecolors='r')
     plt.show()
     exit()
