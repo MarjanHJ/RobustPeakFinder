@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 int peakFinder(	float *inData, unsigned char *inMask,
-				float *SNRFactor, float *minPeakValMap, float *maxBackMeanMap, 
+				float *minPeakValMap, float *maxBackMeanMap, 
 				float *peakList, int MAXIMUM_NUMBER_OF_PEAKS,
 				float bckSNR, float pixPAPR,
 				int XPIX, int YPIX, int PTCHSZ,	
@@ -63,6 +63,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	float mass_x;
 	float mass_y;
 	float mass_t;
+	float win_minPeakValMap;
 
 	int lc_row_cnt, lc_clm_cnt;
 	unsigned int WINSIDE, not_an_extermum_flag;
@@ -79,9 +80,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 //float cpu_time_used_1=0;
 //start_1 = clock();
 
-	//PTCHSZ = 16;// floor(sqrt(49 * PEAK_MAX_PIX));	//this means that size of a Peak should be less than 1% of a patch.
-		// we chose 64 for AGIPD detector where the ASIC size is 64
-	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//now XPIX may or may not be dividable by PTCHSZ
+	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//XPIX may or may not be dividable by PTCHSZ
 	NUM_PATCHS_CLM = floor(YPIX/ PTCHSZ);
 	WINSIDE = (int) floor(PTCHSZ/2)+1;
 	WINSZ = 2 * WINSIDE + 1;
@@ -162,7 +161,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				//later will update the win_of_peak_mask and put it back into inp-Data_mask
 				i = 0;
 				sumNoDataPix = 0;
-				
+				win_minPeakValMap = 0;
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
 
@@ -172,20 +171,22 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						if ((CURX < 0) || (CURX >= XPIX) || (CURY < 0) || (CURY >= YPIX)) {
 							win_of_peak[rcnt][ccnt] = 0;
 							win_of_peak_mask[rcnt][ccnt] = 0;
+							sumNoDataPix++;
 						}
 						else {
 							win_of_peak[rcnt][ccnt] = inData[CURX + CURY*XPIX];
 							win_of_peak_mask[rcnt][ccnt] = inpData_mask[CURX + CURY*XPIX];
+							if(win_of_peak_mask[rcnt][ccnt])
+								win_minPeakValMap += minPeakValMap[CURX + CURY*XPIX];
+							else
+								sumNoDataPix++;
 						}
 
-						win_of_peak_vec[i] = win_of_peak[rcnt][ccnt];
-						win_of_peak_mask_vec[i] = win_of_peak_mask[rcnt][ccnt];		//maybe win_of_peak_mask_vec is unnecessary
-						if (win_of_peak_mask_vec[i] == 0)
-							sumNoDataPix++;
-						i++;
+						win_of_peak_vec[i++] = win_of_peak[rcnt][ccnt];
 					}
 				}
 				inpData_mask[pixIndex]=0;
+				
 				// 78: we would love to capture the background of a bragg peak that 
 				// can spread at lest to one pixel close 
 				// to the local maximum. Lets say all 9 pixels are occupied. 
@@ -193,7 +194,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				// (9*4)-2 + (7*4)-2 + (5*4)-2 = 78 data points
 				if(WIN_N - sumNoDataPix < 78)	
 					continue;
-
+				
 				not_an_extermum_flag=0;
 				for (lc_row_cnt = -2 ; lc_row_cnt < 2 ; lc_row_cnt++)
 					for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++) 
@@ -203,10 +204,10 @@ int peakFinder(	float *inData, unsigned char *inMask,
 					continue;
 
 				
-				RobustSingleGaussianVec(win_of_peak_vec, modelParams, WIN_N, 0.5, 0.4, bckSNR);
+				RobustSingleGaussianVec(win_of_peak_vec, modelParams, win_of_peak[WINSIDE][WINSIDE], WIN_N, 0.5, 0.4, bckSNR, 12);
 				winModelValue = modelParams[0];
 				win_estScale = modelParams[1];
-				
+				win_minPeakValMap = win_minPeakValMap/(WIN_N-sumNoDataPix);
 				win_Proposed_Threshold = bckSNR*win_estScale + winModelValue;
 				
 				if (Patch_Threshold < win_Proposed_Threshold)
@@ -216,6 +217,9 @@ int peakFinder(	float *inData, unsigned char *inMask,
 					continue;
 
 				if (winModelValue > maxBackMeanMap[pixIndex])
+					continue;
+				
+				if (winModelValue <= win_minPeakValMap)
 					continue;
 
 				//////////////////////////////// PAPR here:////////////////////////
@@ -283,12 +287,11 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				}
 				peak_pix_cnt++; // because counting starts from zero
 				
-				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / (bckSNR * win_estScale);
-				Peak_SNR = SNRFactor[pixIndex]*Peak_SNR;	//yes! you need probability map for bad pixel mask
+				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / win_estScale;
 				// This can be learned over background runs.
 
 				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && 
-					 (Peak_SNR > 1) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS)) {
+					 (Peak_SNR > bckSNR) && (peak_cnt<MAXIMUM_NUMBER_OF_PEAKS)) {
 					mass_x = 0;
 					mass_y = 0;
 					mass_t = 0;
