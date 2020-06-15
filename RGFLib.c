@@ -1,5 +1,5 @@
 /*
-This file is par tof the Robust Gaussian Fitting Library presented in: https://github.com/ARSadri/RobustGaussianFittingLibrary
+This file is part of the library, "Robust Gaussian Fitting Library" presented in: https://github.com/ARSadri/RobustGaussianFittingLibrary
 
 Author: Alireza Sadri
 Emails: arsadri@gmail.com
