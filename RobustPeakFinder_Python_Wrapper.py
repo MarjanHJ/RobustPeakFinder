@@ -1,12 +1,11 @@
 import numpy as np
 import ctypes
 import os
-from robustLib.textProgBar import textProgBar
 from multiprocessing import Process, Queue, cpu_count
 
+############ if you are going to use cython, just change this part #############
 dir_path = os.path.dirname(os.path.realpath(__file__))
 peakFinderPythonLib = ctypes.cdll.LoadLibrary(dir_path + '/RobustPeakFinder.so')
-                
 '''
 int peakFinder(	float *inData, float *inMask,
 				float *minPeakValMap, float *maxBackMeanMap, 
@@ -26,7 +25,7 @@ peakFinderPythonLib.peakFinder.argtypes = [
                 ctypes.c_float, ctypes.c_float,
                 ctypes.c_int, ctypes.c_int, ctypes.c_int, 
                 ctypes.c_int, ctypes.c_int]
-
+################################################################################
 
 def robustPeakFinderPyFunc(inData, 
                 inMask = None,
@@ -107,17 +106,18 @@ def robustPeakFinderPyFunc(inData,
 
     return peakListCheetah[:peak_cnt]
     
-def robustPeakFinderPyFunc_multiprocFunc(queue, baseImgCnt, 
-                                                inDataT, 
-                                                inMaskT,
-                                                minPeakValMapT,
-                                                maxBackMeanMapT,
-                                                bckSNR,
-                                                pixPAPR,
-                                                PTCHSZ,
-                                                PEAK_MAX_PIX,
-                                                PEAK_MIN_PIX,
-                                                MAXIMUM_NUMBER_OF_PEAKS):
+def robustPeakFinderPyFunc_multiprocFunc(queue, 
+                                        baseImgCnt, 
+                                        inDataT, 
+                                        inMaskT,
+                                        minPeakValMapT,
+                                        maxBackMeanMapT,
+                                        bckSNR,
+                                        pixPAPR,
+                                        PTCHSZ,
+                                        PEAK_MAX_PIX,
+                                        PEAK_MIN_PIX,
+                                        MAXIMUM_NUMBER_OF_PEAKS):
     for imgCnt in range(inDataT.shape[0]):
         peakList = robustPeakFinderPyFunc(  inData = inDataT[imgCnt],
                                             inMask = inMaskT[imgCnt],
@@ -131,7 +131,7 @@ def robustPeakFinderPyFunc_multiprocFunc(queue, baseImgCnt,
                                             MAXIMUM_NUMBER_OF_PEAKS = MAXIMUM_NUMBER_OF_PEAKS)
         queue.put(list([baseImgCnt+imgCnt, peakList]))
     
-def robustPeakFinderPyFunc_multiproc(   inData, 
+def robustPeakFinderPyFunc_multiproc(inData, 
                                         inMask = None,
                                         minPeakValMap = None, 
                                         maxBackMeanMap = None, 
@@ -161,7 +161,6 @@ def robustPeakFinderPyFunc_multiproc(   inData,
     numSubmitted = 0
     numProcessed = 0
     numBusyCores = 0
-    firstProcessed = 0
     default_stride = np.maximum(mycpucount, int(numProc/mycpucount/2))
     while(numProcessed<numProc):
         if (not queue.empty()):
@@ -172,12 +171,7 @@ def robustPeakFinderPyFunc_multiproc(   inData,
             peakListTensor[_imgCnt, :nPeaks[_imgCnt], :] = _tmpResult
             numBusyCores -= 1
             numProcessed += 1
-            if(firstProcessed==0):
-                pBar = textProgBar(numProc-1, title = 'RPF progress')
-                firstProcessed = 1
-            else:
-                pBar.go(1)
-            continue;
+            continue;   #its allways good to empty the queue
 
         if((numSubmitted<numProc) & (numBusyCores < mycpucount)):
             baseImgCnt = numSubmitted
@@ -198,5 +192,4 @@ def robustPeakFinderPyFunc_multiproc(   inData,
                             MAXIMUM_NUMBER_OF_PEAKS))).start()
             numSubmitted += stride
             numBusyCores += 1
-    del pBar
     return(nPeaks, peakListTensor)

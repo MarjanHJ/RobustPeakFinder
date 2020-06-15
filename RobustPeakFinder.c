@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
-//#include <time.h>
-#include "./../RGFLib/RobustGausFitLib.c"
+
+#include "RGFLib.c"
+
+#define MSSE_LAMBDA	4.0
 
 void freeArray_f(float **a, unsigned int m) {
 	unsigned int i;
@@ -39,7 +41,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				int XPIX, int YPIX, int PTCHSZ,	
 				int PEAK_MIN_PIX, int PEAK_MAX_PIX) {
 
-	unsigned char *inpData_mask;
+	unsigned char *noVisitMask;
 	int *win_peak_info_x;
 	int *win_peak_info_y;
 	float *win_peak_info_val;
@@ -48,23 +50,12 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	int *pix_to_visit;
 	float **win_of_peak;
 	unsigned char **win_of_peak_mask;
-
-	float win_estScale;
-	float winModelValue;
-	float sumPeakValues;
-	float Peak_SNR;
-	float win_Proposed_Threshold;
-	float curr_pix_val;
-	float pixValue;
-	float Pchimg_maximum;
-	float Patch_Threshold;
-	float Signal_Power;
+	float win_estScale, winModelValue, sumPeakValues;
+	float Peak_SNR, win_Proposed_Threshold, curr_pix_val, pixValue;
+	float Pchimg_maximum, Patch_Threshold, Signal_Power;
 	float modelParams[2];
-	float mass_x;
-	float mass_y;
-	float mass_t;
+	float mass_x, mass_y, mass_t;
 	float win_minPeakValMap;
-
 	int lc_row_cnt, lc_clm_cnt;
 	unsigned int WINSIDE, not_an_extermum_flag;
 	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM;
@@ -76,10 +67,6 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	unsigned long pixelcounter, pixIndex;
 	unsigned char dist2Max;
 
-//clock_t start_1;
-//float cpu_time_used_1=0;
-//start_1 = clock();
-
 	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//XPIX may or may not be dividable by PTCHSZ
 	NUM_PATCHS_CLM = floor(YPIX/ PTCHSZ);
 	WINSIDE = (int) floor(PTCHSZ/2)+1;
@@ -89,10 +76,11 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	win_of_peak=(float **) malloc(WINSZ*sizeof(float *));
 	for(i=0;i<WINSZ;i++)
 		win_of_peak[i]=(float *) malloc(WINSZ*sizeof(float));
+	
 	win_of_peak_mask=(unsigned char **) malloc(WINSZ*sizeof(unsigned char *));
 	for(i=0;i<WINSZ;i++)
 		win_of_peak_mask[i]=(unsigned char *) malloc(WINSZ*sizeof(unsigned char));
-	inpData_mask=(unsigned char *) malloc(XPIX*YPIX*sizeof(unsigned char));
+	noVisitMask=(unsigned char *) malloc(XPIX*YPIX*sizeof(unsigned char));
 	win_of_peak_vec = (float*) malloc(WIN_N * sizeof(float));
 	win_of_peak_mask_vec = (unsigned char*) malloc(WIN_N * sizeof(unsigned char));
 	win_peak_info_x = (int*) malloc(WIN_N * sizeof(int));
@@ -101,10 +89,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	pix_to_visit = (int*) malloc(WIN_N * sizeof(int));
 
 	for (pixelcounter=0; pixelcounter<XPIX*YPIX;pixelcounter++)
-		inpData_mask[pixelcounter]=inMask[pixelcounter];
-
-//cpu_time_used_1 += ((float) (clock() - start_1));
-//cpu_time_used_1 = 0;
+		noVisitMask[pixelcounter]=inMask[pixelcounter];
 
 	//we turn the image into patches to propose peaks,
 	//then, regardless of the patching, in each patch we check each proposed peak.
@@ -113,7 +98,6 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	peak_cnt = 0;
 	for ( Ptch_rcnt = 0; Ptch_rcnt < NUM_PATCHS_ROW ; Ptch_rcnt++) {
 		for ( Ptch_ccnt = 0; Ptch_ccnt < NUM_PATCHS_CLM; Ptch_ccnt++) {
-//start_1 = clock();
 
 			PtchRowStart = 0;
 			PtchRowEnd = PTCHSZ;
@@ -138,7 +122,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 					for (rcnt = PtchRowStart ; rcnt < PtchRowEnd ; rcnt++) {
 						pixIndex = (Ptch_rcnt*PTCHSZ+rcnt) + (Ptch_ccnt*PTCHSZ+ccnt)*XPIX;
 						pixValue = inData[pixIndex];
-						if( (pixValue>=Pchimg_maximum) && (inpData_mask[pixIndex]>0) ) {
+						if( (pixValue>=Pchimg_maximum) && (noVisitMask[pixIndex]>0) ) {
 							Pchimg_maximum = pixValue;
 							Glob_row_ind = Ptch_rcnt*PTCHSZ + rcnt;   // global index of extermum
 							Glob_clm_ind = Ptch_ccnt*PTCHSZ + ccnt;
@@ -175,7 +159,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						}
 						else {
 							win_of_peak[rcnt][ccnt] = inData[CURX + CURY*XPIX];
-							win_of_peak_mask[rcnt][ccnt] = inpData_mask[CURX + CURY*XPIX];
+							win_of_peak_mask[rcnt][ccnt] = noVisitMask[CURX + CURY*XPIX];
 							if(win_of_peak_mask[rcnt][ccnt])
 								win_minPeakValMap += minPeakValMap[CURX + CURY*XPIX];
 							else
@@ -185,7 +169,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						win_of_peak_vec[i++] = win_of_peak[rcnt][ccnt];
 					}
 				}
-				inpData_mask[pixIndex]=0;
+				noVisitMask[pixIndex]=0;
 				
 				// 78: we would love to capture the background of a bragg peak that 
 				// can spread at lest to one pixel close 
@@ -204,11 +188,11 @@ int peakFinder(	float *inData, unsigned char *inMask,
 					continue;
 
 				
-				RobustSingleGaussianVec(win_of_peak_vec, modelParams, win_of_peak[WINSIDE][WINSIDE], WIN_N, 0.5, 0.4, bckSNR, 12);
+				RobustSingleGaussianVec(win_of_peak_vec, modelParams, win_of_peak[WINSIDE][WINSIDE], WIN_N, 0.5, 0.4, MSSE_LAMBDA, 12);
 				winModelValue = modelParams[0];
 				win_estScale = modelParams[1];
 				win_minPeakValMap = win_minPeakValMap/(WIN_N-sumNoDataPix);
-				win_Proposed_Threshold = bckSNR*win_estScale + winModelValue;
+				win_Proposed_Threshold = MSSE_LAMBDA*win_estScale + winModelValue;
 				
 				if (Patch_Threshold < win_Proposed_Threshold)
 					Patch_Threshold = win_Proposed_Threshold;
@@ -287,7 +271,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				}
 				peak_pix_cnt++; // because counting starts from zero
 				
-				Peak_SNR = (win_of_peak[WINSIDE][WINSIDE] - winModelValue) / win_estScale;
+				Peak_SNR = (win_peak_info_val[0] - winModelValue) / win_estScale;
 				// This can be learned over background runs.
 
 				if ( (peak_pix_cnt >= PEAK_MIN_PIX) && (peak_pix_cnt <= PEAK_MAX_PIX) && 
@@ -296,6 +280,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 					mass_y = 0;
 					mass_t = 0;
 					for(i=0;i<peak_pix_cnt;i++) {
+						win_peak_info_val[i] -= winModelValue;	//according to cheetah									
 						mass_x += (win_peak_info_x[i] - WINSIDE + Glob_row_ind + 1)*(win_peak_info_val[i]);
 						mass_y += (win_peak_info_y[i] - WINSIDE + Glob_clm_ind + 1)*(win_peak_info_val[i]);
 						mass_t += win_peak_info_val[i];
@@ -305,7 +290,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 					peakList[6*peak_cnt+1] = mass_y/mass_t - 1;
 					peakList[6*peak_cnt+2] = mass_t;
 					peakList[6*peak_cnt+3] = peak_pix_cnt;
-					peakList[6*peak_cnt+4] = win_of_peak[WINSIDE][WINSIDE];
+					peakList[6*peak_cnt+4] = win_peak_info_val[0];
 					peakList[6*peak_cnt+5] = Peak_SNR;
 					peak_cnt++;
 				}
@@ -316,21 +301,19 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						CURY = Glob_clm_ind + ccnt - WINSIDE;
 						if ((CURX >= 0) && (CURX < XPIX) && (CURY >= 0) && (CURY < YPIX)) {
 							pixIndex = CURX + CURY*XPIX;
-							inpData_mask[pixIndex] = win_of_peak_mask[rcnt][ccnt];
+							noVisitMask[pixIndex] = win_of_peak_mask[rcnt][ccnt];
 						}
 					}
 				}
 			}	//end of while(peaks)
-//cpu_time_used_1 += ((float) (clock() - start_1));
-
 		} //end of for pathes_y
 	} //end of for pathes_x
-//cpu_time_used_1 = cpu_time_used_1/CLOCKS_PER_SEC;
+
 
 freeArray_f(win_of_peak, WINSZ);
 freeArray_ub(win_of_peak_mask, WINSZ);
 
-free(inpData_mask);
+free(noVisitMask);
 free(win_of_peak_vec);
 free(win_of_peak_mask_vec);
 
