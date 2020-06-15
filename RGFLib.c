@@ -1,3 +1,10 @@
+/*
+This file is par tof the Robust Gaussian Fitting Library presented in: https://github.com/ARSadri/RobustGaussianFittingLibrary
+
+Author: Alireza Sadri
+Emails: arsadri@gmail.com
+        alireza.sadri@desy.de
+*/
 #include <math.h>
 #include <stdlib.h>
 // gcc -fPIC -shared -o RobustGausFitLib.c RobustGausFitLib.so
