@@ -5,7 +5,7 @@ LDFLAGS = -shared
 RM = rm -rf
 TARGET_LIB = RobustPeakFinder.so
 
-SRCS = RobustPeakFinder.c
+SRCS = RobustPeakFinder.c RGFLib.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: all
