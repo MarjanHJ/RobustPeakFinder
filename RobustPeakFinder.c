@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "RGFLib.c"
+#include "RGFLib.h"
 
 #define MSSE_LAMBDA	4.0
 
