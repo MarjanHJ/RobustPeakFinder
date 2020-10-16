@@ -35,13 +35,14 @@ extern "C" {
 #endif
 
 int peakFinder(	float *inData, unsigned char *inMask,
-				float *minPeakValMap, float *maxBackMeanMap, 
-				float *peakList, int MAXIMUM_NUMBER_OF_PEAKS,
+				float *darkThreshold, float *singlePhotonADU, 
+				float *backgroundMax, float *peakList, 
+				int MAXIMUM_NUMBER_OF_PEAKS,
 				float bckSNR, float pixPAPR,
 				int XPIX, int YPIX, int PTCHSZ,	
 				int PEAK_MIN_PIX, int PEAK_MAX_PIX) {
 
-	unsigned char *noVisitMask;
+	unsigned char *notVisitedMask;
 	int *win_peak_info_x;
 	int *win_peak_info_y;
 	float *win_peak_info_val;
@@ -55,7 +56,8 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	float Pchimg_maximum, Patch_Threshold, Signal_Power;
 	float modelParams[2];
 	float mass_x, mass_y, mass_t;
-	float win_minPeakValMap;
+	float win_darkThreshold;
+	float brightPeakInTheDarkLimit;
 	int lc_row_cnt, lc_clm_cnt;
 	unsigned int WINSIDE, not_an_extermum_flag;
 	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM;
@@ -80,7 +82,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	win_of_peak_mask=(unsigned char **) malloc(WINSZ*sizeof(unsigned char *));
 	for(i=0;i<WINSZ;i++)
 		win_of_peak_mask[i]=(unsigned char *) malloc(WINSZ*sizeof(unsigned char));
-	noVisitMask=(unsigned char *) malloc(XPIX*YPIX*sizeof(unsigned char));
+	notVisitedMask=(unsigned char *) malloc(XPIX*YPIX*sizeof(unsigned char));
 	win_of_peak_vec = (float*) malloc(WIN_N * sizeof(float));
 	win_of_peak_mask_vec = (unsigned char*) malloc(WIN_N * sizeof(unsigned char));
 	win_peak_info_x = (int*) malloc(WIN_N * sizeof(int));
@@ -89,7 +91,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 	pix_to_visit = (int*) malloc(WIN_N * sizeof(int));
 
 	for (pixelcounter=0; pixelcounter<XPIX*YPIX;pixelcounter++)
-		noVisitMask[pixelcounter]=inMask[pixelcounter];
+		notVisitedMask[pixelcounter]=inMask[pixelcounter];
 
 	//we turn the image into patches to propose peaks,
 	//then, regardless of the patching, in each patch we check each proposed peak.
@@ -115,28 +117,29 @@ int peakFinder(	float *inData, unsigned char *inMask,
 
 			Patch_Threshold = 0;
 			Pchimg_maximum = Patch_Threshold + 1;
-			while( Patch_Threshold < Pchimg_maximum ) {
+			while( Pchimg_maximum > Patch_Threshold ) {
 			
 				Pchimg_maximum = 0;
 				for (ccnt = PtchClmStart ; ccnt < PtchClmEnd ; ccnt++) {
 					for (rcnt = PtchRowStart ; rcnt < PtchRowEnd ; rcnt++) {
 						pixIndex = (Ptch_rcnt*PTCHSZ+rcnt) + (Ptch_ccnt*PTCHSZ+ccnt)*XPIX;
 						pixValue = inData[pixIndex];
-						if( (pixValue>=Pchimg_maximum) && (noVisitMask[pixIndex]>0) ) {
+						if( (pixValue>=Pchimg_maximum) && (notVisitedMask[pixIndex]>0) ) {
 							Pchimg_maximum = pixValue;
 							Glob_row_ind = Ptch_rcnt*PTCHSZ + rcnt;   // global index of extermum
 							Glob_clm_ind = Ptch_ccnt*PTCHSZ + ccnt;
 						}
 					}
 				}
-				if(Pchimg_maximum <= 1)
-					break;
+	 
 				pixIndex = Glob_row_ind + Glob_clm_ind *XPIX;
-				
+ 
+				brightPeakInTheDarkLimit = darkThreshold[pixIndex] + bckSNR*sqrt(darkThreshold[pixIndex]*singlePhotonADU[pixIndex]);
+ 
 				//if the patch maximum is masked or too small
 				if ( (Pchimg_maximum <= Patch_Threshold) ||
-					 (Pchimg_maximum <= minPeakValMap[pixIndex]) )
-						break;
+					 (Pchimg_maximum <= brightPeakInTheDarkLimit) )
+					break;
 
 				//acquire the data around the extremum from original data.
 
@@ -145,7 +148,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				//later will update the win_of_peak_mask and put it back into inp-Data_mask
 				i = 0;
 				sumNoDataPix = 0;
-				win_minPeakValMap = 0;
+				win_darkThreshold = 0;
 				for (rcnt = 0 ; rcnt < WINSZ ; rcnt++) {
 					for (ccnt = 0 ; ccnt < WINSZ ; ccnt++) {
 
@@ -159,9 +162,13 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						}
 						else {
 							win_of_peak[rcnt][ccnt] = inData[CURX + CURY*XPIX];
-							win_of_peak_mask[rcnt][ccnt] = noVisitMask[CURX + CURY*XPIX];
+							win_of_peak_mask[rcnt][ccnt] = notVisitedMask[CURX + CURY*XPIX];
+
+							if(win_of_peak[rcnt][ccnt] <= darkThreshold[CURX + CURY*XPIX])
+								win_of_peak_mask[rcnt][ccnt] = 0;
+							
 							if(win_of_peak_mask[rcnt][ccnt])
-								win_minPeakValMap += minPeakValMap[CURX + CURY*XPIX];
+								win_darkThreshold += darkThreshold[CURX + CURY*XPIX];
 							else
 								sumNoDataPix++;
 						}
@@ -169,14 +176,26 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						win_of_peak_vec[i++] = win_of_peak[rcnt][ccnt];
 					}
 				}
-				noVisitMask[pixIndex]=0;
+				notVisitedMask[pixIndex]=0;
+
+				RobustSingleGaussianVec(win_of_peak_vec, modelParams, 0, 
+										WIN_N, 0.5, 0.3, MSSE_LAMBDA, 10, 
+										singlePhotonADU[pixIndex]);
+
+				winModelValue = modelParams[0];
+				win_estScale = modelParams[1];
+				win_darkThreshold = win_darkThreshold/(WIN_N-sumNoDataPix);
+				win_Proposed_Threshold = MSSE_LAMBDA*win_estScale + winModelValue;
 				
-				// 78: we would love to capture the background of a bragg peak that 
+				if (Patch_Threshold < win_Proposed_Threshold)
+					Patch_Threshold = win_Proposed_Threshold;
+
+				// 44: we would love to capture the background of a bragg peak that 
 				// can spread at lest to one pixel close 
 				// to the local maximum. Lets say all 9 pixels are occupied. 
 				// Then at least thress pixels away must be present for background estimation. So that is:
-				// (9*4)-2 + (7*4)-2 + (5*4)-2 = 78 data points
-				if(WIN_N - sumNoDataPix < 78)	
+				// (7*4)-2 + (5*4)-2 = 44 data points
+				if(WIN_N - sumNoDataPix < 44)
 					continue;
 				
 				not_an_extermum_flag=0;
@@ -187,24 +206,15 @@ int peakFinder(	float *inData, unsigned char *inMask,
 				if (not_an_extermum_flag>0)
 					continue;
 
-				
-				RobustSingleGaussianVec(win_of_peak_vec, modelParams, win_of_peak[WINSIDE][WINSIDE], WIN_N, 0.5, 0.4, MSSE_LAMBDA, 12);
-				winModelValue = modelParams[0];
-				win_estScale = modelParams[1];
-				win_minPeakValMap = win_minPeakValMap/(WIN_N-sumNoDataPix);
-				win_Proposed_Threshold = MSSE_LAMBDA*win_estScale + winModelValue;
-				
-				if (Patch_Threshold < win_Proposed_Threshold)
-					Patch_Threshold = win_Proposed_Threshold;
-
 				if (win_of_peak[WINSIDE][WINSIDE] <= win_Proposed_Threshold)
 					continue;
 
-				if (winModelValue > maxBackMeanMap[pixIndex])
+				if (winModelValue > backgroundMax[pixIndex])
 					continue;
 				
-				if (winModelValue <= win_minPeakValMap)
-					continue;
+				if (winModelValue <= win_darkThreshold)
+					if(win_of_peak[WINSIDE][WINSIDE] <= brightPeakInTheDarkLimit)
+						continue;
 
 				//////////////////////////////// PAPR here:////////////////////////
 				win_num_pix = 0;
@@ -301,7 +311,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 						CURY = Glob_clm_ind + ccnt - WINSIDE;
 						if ((CURX >= 0) && (CURX < XPIX) && (CURY >= 0) && (CURY < YPIX)) {
 							pixIndex = CURX + CURY*XPIX;
-							noVisitMask[pixIndex] = win_of_peak_mask[rcnt][ccnt];
+							notVisitedMask[pixIndex] = win_of_peak_mask[rcnt][ccnt];
 						}
 					}
 				}
@@ -313,7 +323,7 @@ int peakFinder(	float *inData, unsigned char *inMask,
 freeArray_f(win_of_peak, WINSZ);
 freeArray_ub(win_of_peak_mask, WINSZ);
 
-free(noVisitMask);
+free(notVisitedMask);
 free(win_of_peak_vec);
 free(win_of_peak_mask_vec);
 
