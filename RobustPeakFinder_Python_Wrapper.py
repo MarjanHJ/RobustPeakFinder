@@ -6,40 +6,45 @@ from multiprocessing import Process, Queue, cpu_count
 ############ if you are going to use cython, just change this part #############
 dir_path = os.path.dirname(os.path.realpath(__file__))
 peakFinderPythonLib = ctypes.cdll.LoadLibrary(dir_path + '/RobustPeakFinder.so')
-'''
-int peakFinder(	float *inData, unsigned char *inMask,
-				float *darkThreshold, float *singlePhotonADU, 
-				float *backgroundMax, float *peakList, 
-				int MAXIMUM_NUMBER_OF_PEAKS,
-				float bckSNR, float pixPAPR,
-				int XPIX, int YPIX, int PTCHSZ,	
-				int PEAK_MIN_PIX, int PEAK_MAX_PIX)
-'''
+""""RPF main calling function:
+int peakFinder( float *inData, unsigned char *inMask, unsigned char *peakMask, 
+                float *darkThreshold, float *singlePhotonADU, 
+                float *maxBackMeanMap, float *peakList, float *peakMap,
+                int MAXIMUM_NUMBER_OF_PEAKS,
+                float bckSNR, float pixPAPR,
+                int XPIX, int YPIX, int PTCHSZ,    
+                int PEAK_MIN_PIX, int PEAK_MAX_PIX, int optIters)
+"""
 peakFinderPythonLib.peakFinder.restype = ctypes.c_int
 peakFinderPythonLib.peakFinder.argtypes = [
                 np.ctypeslib.ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),
+                np.ctypeslib.ndpointer(ctypes.c_uint8, flags="C_CONTIGUOUS"),
                 np.ctypeslib.ndpointer(ctypes.c_uint8, flags="C_CONTIGUOUS"),
                 np.ctypeslib.ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),
                 np.ctypeslib.ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),
                 np.ctypeslib.ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),
                 np.ctypeslib.ndpointer(ctypes.c_float, flags="C_CONTIGUOUS"),
+                np.ctypeslib.ndpointer(ctypes.c_uint8, flags="C_CONTIGUOUS"),
                 ctypes.c_int,
                 ctypes.c_float, ctypes.c_float,
                 ctypes.c_int, ctypes.c_int, ctypes.c_int, 
-                ctypes.c_int, ctypes.c_int]
+                ctypes.c_int, ctypes.c_int, ctypes.c_int]
 ################################################################################
 
 def robustPeakFinderPyFunc(inData, 
                 inMask = None,
+                peakMask = None,
                 darkThreshold = None,
                 singlePhotonADU = None,
-                backgroundMax = None, 
+                maxBackMeanMap = None, 
                 bckSNR = 6.0,
                 pixPAPR = 2.0,
                 PTCHSZ = 16,
                 PEAK_MAX_PIX = 25,
                 PEAK_MIN_PIX = 1,
-                MAXIMUM_NUMBER_OF_PEAKS = 1024):
+                MAXIMUM_NUMBER_OF_PEAKS = 1024,
+                optIters = 10,
+                returnPeakMap = False):
     """Robust Peak Finder parameters
     The Python Wrapper for the Robust Peak peakFinder
     Authors: Marjan Hadian Jazi
@@ -49,13 +54,15 @@ def robustPeakFinderPyFunc(inData,
     inData : This is the 2D input image as a np 2d-array.
     inMask : This is the bad pixel mask.
             default: 1 for all pixels, with the size of inData
+    peakMask : given a peak mask made by peakNet, it will not look for peaks if peakMask is 0
+            default: 1 for all pixels, with the size of inData
     darkThreshold : give darkSNR * STD of the values of pixels in the dark
             darkSNR = 4 to 6 gives good results.
             default: 0 with the size of inData
     singlePhotonADU : relate pixel values to variance of background under high intensity Flat field
                     The gain of the line passing through zero gives you the single photon ADU
             default: 1 with the size of inData
-    backgroundMax : maximum value of the model for the background, 
+    maxBackMeanMap : maximum value of the model for the background, 
                        useful for stopping background to go to nonlinear regions
             default: np.fino('float32').max with the size of inData
     peakList : the output array of size MAXIMUM_NUMBER_OF_PEAKS x 6
@@ -70,9 +77,10 @@ def robustPeakFinderPyFunc(inData,
             default: 1        
     PEAK_MAX_PIX: maximum number of pixels in a peak.
             default: 25
-            
+    optIters: Number of iterations of order stantistics optimization (FLKOS)
+            default: 10
     Output:
-    peakListCheetah is a np 2D-array in the style of Cheetah's output for CXI files
+    peakList is a np 2D-array in the style of Cheetah's output for CXI files
     Each row is for each peak and coloums are:
     -----------------------------------------------------------------------------------------
     Mass_Center_X, Mass_Center_Y, Mass_Total, Number of pixels in a peak, Maximum value, SNR
@@ -85,43 +93,57 @@ def robustPeakFinderPyFunc(inData,
         inMask = np.ones(inDataShape, dtype='uint8')
     else:
         inMask = inMask.astype('uint8')
-    if(backgroundMax is None):
-        backgroundMax = np.ones(inDataShape, dtype='float32')*np.finfo('float32').max
+    if(peakMask is None):
+        peakMask = inMask.copy()
     else:
-        backgroundMax = backgroundMax.astype('float32')
+        peakMask = (peakMask*inMask.copy()).astype('uint8')
+    if(maxBackMeanMap is None):
+        maxBackMeanMap = np.ones(inDataShape, dtype='float32')*np.finfo('float32').max
+    else:
+        maxBackMeanMap = maxBackMeanMap.astype('float32')
     if(darkThreshold is None):
         darkThreshold = np.zeros(inDataShape, dtype='float32')
     else:
         darkThreshold = darkThreshold.astype('float32')
     if(singlePhotonADU is None):
-        singlePhotonADU = np.zeros(inDataShape, dtype='float32')
+        singlePhotonADU = np.ones(inDataShape, dtype='float32')
     else:
         singlePhotonADU = singlePhotonADU.astype('float32')
 
-
     inData = inData.astype('float32')
     
-    peakListCheetah = np.zeros([MAXIMUM_NUMBER_OF_PEAKS, 6], dtype='float32')    
+    peakList = np.zeros([MAXIMUM_NUMBER_OF_PEAKS, 6], dtype='float32')    
+    if(returnPeakMap):
+        peakMap = np.zeros(shape = inMask.shape, dtype = inMask.dtype)
+    else:
+        peakMap = np.ones(shape = (2,2), dtype = inMask.dtype)
 
     peak_cnt = peakFinderPythonLib.peakFinder(  inData.flatten('F'), 
                                                 inMask.flatten('F'), 
+                                                peakMask.flatten('F'),
                                                 darkThreshold.flatten('F'),
                                                 singlePhotonADU.flatten('F'),
-                                                backgroundMax.flatten('F'),
-                                                peakListCheetah,
+                                                maxBackMeanMap.flatten('F'),
+                                                peakList,
+												peakMap,
                                                 MAXIMUM_NUMBER_OF_PEAKS,
                                                 bckSNR, pixPAPR,
                                                 inDataShape[0], 
                                                 inDataShape[1], 
                                                 PTCHSZ, 
                                                 PEAK_MIN_PIX, 
-                                                PEAK_MAX_PIX)
-    return peakListCheetah[:peak_cnt]
+                                                PEAK_MAX_PIX,
+                                                optIters)
+    if(returnPeakMap):
+        return((peakList[:peak_cnt], peakMap))
+    else:
+         return(peakList[:peak_cnt])
     
 def robustPeakFinderPyFunc_multiprocFunc(queue, 
                                         baseImgCnt, 
                                         inDataT, 
                                         inMaskT,
+                                        peakMaskT,
                                         darkThreshold,
                                         singlePhotonADU,
                                         backgroundMaxT,
@@ -130,37 +152,53 @@ def robustPeakFinderPyFunc_multiprocFunc(queue,
                                         PTCHSZ,
                                         PEAK_MAX_PIX,
                                         PEAK_MIN_PIX,
-                                        MAXIMUM_NUMBER_OF_PEAKS):
+                                        MAXIMUM_NUMBER_OF_PEAKS,
+                                        optIters,
+                                        returnPeakMap):
     for imgCnt in range(inDataT.shape[0]):
-        peakList = robustPeakFinderPyFunc(  inData = inDataT[imgCnt],
+        toUnpack = robustPeakFinderPyFunc( inData = inDataT[imgCnt],
                                             inMask = inMaskT[imgCnt],
+                                            peakMask = peakMaskT[imgCnt],
                                             darkThreshold = darkThreshold[imgCnt], 
                                             singlePhotonADU = singlePhotonADU[imgCnt], 
-                                            backgroundMax = backgroundMaxT[imgCnt],
+                                            maxBackMeanMap = backgroundMaxT[imgCnt],
                                             bckSNR = bckSNR,
                                             pixPAPR = pixPAPR,
                                             PTCHSZ = PTCHSZ,
                                             PEAK_MAX_PIX = PEAK_MAX_PIX,
                                             PEAK_MIN_PIX = PEAK_MIN_PIX,
-                                            MAXIMUM_NUMBER_OF_PEAKS = MAXIMUM_NUMBER_OF_PEAKS)
-        queue.put(list([baseImgCnt+imgCnt, peakList]))
-    
+                                            MAXIMUM_NUMBER_OF_PEAKS = MAXIMUM_NUMBER_OF_PEAKS,
+                                            optIters = optIters,
+                                            returnPeakMap = returnPeakMap)
+        if(returnPeakMap):
+            peakList, peakMap = toUnpack
+            queue.put(list([baseImgCnt+imgCnt, peakList, peakMap]))
+        else:
+            peakList = toUnpack
+            queue.put(list([baseImgCnt+imgCnt, peakList]))
+
+
 def robustPeakFinderPyFunc_multiproc(inData, 
                                         inMask = None,
+                                        peakMask = None,
                                         darkThreshold = None, 
                                         singlePhotonADU = None,
-                                        backgroundMax = None, 
+                                        maxBackMeanMap = None, 
                                         bckSNR = 6.0,
                                         pixPAPR = 2.0,
                                         PTCHSZ = 16,
                                         PEAK_MAX_PIX = 25,
                                         PEAK_MIN_PIX = 1,
-                                        MAXIMUM_NUMBER_OF_PEAKS = 1024):
+                                        MAXIMUM_NUMBER_OF_PEAKS = 1024,
+                                        optIters = 10,
+                                        returnPeakMap = False):
     inDataShape = inData.shape
     if(inMask is None):
         inMask = np.ones(inDataShape, dtype='uint8')
-    if(backgroundMax is None):
-        backgroundMax = np.ones(inDataShape, dtype='float32')*np.finfo('float32').max
+    if(peakMask is None):
+        peakMask = inMask.copy()
+    if(maxBackMeanMap is None):
+        maxBackMeanMap = np.ones(inDataShape, dtype='float32')*np.finfo('float32').max
     if(darkThreshold is None):
         darkThreshold = np.zeros(inDataShape, dtype='float32')
     if(singlePhotonADU is None):
@@ -169,11 +207,13 @@ def robustPeakFinderPyFunc_multiproc(inData,
     f_N = inData.shape[0]
     
     peakListTensor = np.zeros((f_N, 1024, 6), dtype='float32')
+    if(returnPeakMap):
+        peakMapTensor = np.zeros(shape = inDataShape, dtype = 'uint8')
     nPeaks = np.zeros(f_N, dtype='uint32')
     
     queue = Queue()
-    mycpucount = cpu_count() - 1
-    print('Multiprocessing ' + str(f_N) + ' frames...')
+    mycpucount = cpu_count()
+    print('Multiprocessing ' + str(f_N) + ' frames with ' + str(mycpucount) + ' CPUs...')
     numProc = f_N
     numSubmitted = 0
     numProcessed = 0
@@ -186,6 +226,9 @@ def robustPeakFinderPyFunc_multiproc(inData,
             _tmpResult = qElement[1]
             nPeaks[_imgCnt] = _tmpResult.shape[0]
             peakListTensor[_imgCnt, :nPeaks[_imgCnt], :] = _tmpResult
+            if(returnPeakMap):
+                peakMapTensor[_imgCnt] = qElement[2]
+            
             numBusyCores -= 1
             numProcessed += 1
             continue;   #its allways good to empty the queue
@@ -194,20 +237,26 @@ def robustPeakFinderPyFunc_multiproc(inData,
             baseImgCnt = numSubmitted
             stride = np.minimum(default_stride, numProc - numSubmitted)
             if(stride==1):
-                baseImgCnt -= 1
+                baseImgCnt -= 1                
             Process(target = robustPeakFinderPyFunc_multiprocFunc, 
                     args=((queue, baseImgCnt,
                             inData[baseImgCnt:baseImgCnt+stride], 
                             inMask[baseImgCnt:baseImgCnt+stride],
+                            peakMask[baseImgCnt:baseImgCnt+stride],
                             darkThreshold[baseImgCnt:baseImgCnt+stride],
                             singlePhotonADU[baseImgCnt:baseImgCnt+stride],
-                            backgroundMax[baseImgCnt:baseImgCnt+stride],
+                            maxBackMeanMap[baseImgCnt:baseImgCnt+stride],
                             bckSNR, 
                             pixPAPR,
                             PTCHSZ,
                             PEAK_MAX_PIX,
                             PEAK_MIN_PIX,
-                            MAXIMUM_NUMBER_OF_PEAKS))).start()
+                            MAXIMUM_NUMBER_OF_PEAKS,
+                            optIters,
+                            returnPeakMap))).start()
             numSubmitted += stride
             numBusyCores += 1
-    return(nPeaks, peakListTensor)
+    if(returnPeakMap):
+        return(nPeaks, peakListTensor, peakMapTensor)
+    else:
+        return(nPeaks, peakListTensor)
