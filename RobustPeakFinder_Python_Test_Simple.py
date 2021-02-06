@@ -57,10 +57,10 @@ numpy.set_printoptions(precision=2, suppress=True)
    
 if __name__ == '__main__':    
     print('PID ->' + str(getpid()))
-    XSZ = 300
-    YSZ = 350
+    XSZ = 1221
+    YSZ = 1150
     WINSIZE = 7
-    inputPeaksNumber = 25
+    inputPeaksNumber = 250
     numOutliers = 5
     print("Generating a pattern with " + str(inputPeaksNumber) + " peaks...")
     
@@ -72,14 +72,16 @@ if __name__ == '__main__':
     time_time = time.time()
     peakList, peakMap = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, 
                                                                                inMask = inMask, 
-                                                                               bckSNR=6.0,
-                                                                               returnPeakMap = True)
+                                                                               bckSNR = 6.0,
+                                                                               returnPeakMap = True,
+                                                                               PTCHSZ = 25,
+                                                                               finiteSampleBias = 200)
     print('RPF finished in ' + '%4f'%(time.time() - time_time) +' seconds')
     print("RPF: There are " + str(peakList.shape[0]) + " peaks in this image!")
     print(peakList[:, :2].T)
     print(randomLocations)
-    peakMap[peakMap>0] = 1
-    plt.imshow((inData*inMask*peakMap).T)
+    
+    plt.imshow((inMask*peakMap).T)
     plt.plot(peakList[:, 0], peakList[:, 1],'o')
     plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
     plt.show()
@@ -95,9 +97,9 @@ if __name__ == '__main__':
         RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc_multiproc(inData = inTensorData, 
                                                                          inMask = inTensorMask, 
                                                                          bckSNR = 6.0,
-                                                                         returnPeakMap = True)
-    peakMapTensor[peakMapTensor>0] = 1
-    proc = (_tmpData*_tmpMask*peakMapTensor[1]).copy()
+                                                                         returnPeakMap = True,
+                                                                         PTCHSZ = 23)
+    proc = (_tmpMask*peakMapTensor[1]).copy()
     plt.imshow(proc.T)
     plt.plot(peakListTensor[1, :, 0], peakListTensor[1, :, 1],'o')
     plt.plot(randomLocations[0,:], randomLocations[1,:],'x')

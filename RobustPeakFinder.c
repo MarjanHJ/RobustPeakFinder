@@ -35,12 +35,13 @@ extern "C" {
 #endif
 
 int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
-				float *darkThreshold, float *singlePhotonADU, 
-				float *maxBackMeanMap, float *peakList, unsigned char *peakMap,
+				float *darkThreshold, float singlePhotonADU,
+				float *maxBackMeanMap, float *peakList, float *peakMap,
 				int MAXIMUM_NUMBER_OF_PEAKS,
 				float bckSNR, float pixPAPR,
 				int XPIX, int YPIX, int PTCHSZ,	
-				int PEAK_MIN_PIX, int PEAK_MAX_PIX, int optIters) {
+				int PEAK_MIN_PIX, int PEAK_MAX_PIX,
+				int optIters, int finiteSampleBias) {
 
 	int *win_peak_info_x;
 	int *win_peak_info_y;
@@ -58,6 +59,7 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 	float mass_x, mass_y, mass_t;
 	float win_darkThreshold;
 	float brightPeakInTheDarkLimit;
+	float winScale;
 	int lc_row_cnt, lc_clm_cnt;
 	unsigned int WINSIDE, not_an_extermum_flag;
 	unsigned int WIN_N, WINSZ, NUM_PATCHS_ROW, NUM_PATCHS_CLM;
@@ -68,16 +70,26 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 	unsigned int sumNoDataPix;
 	unsigned long pixelcounter, pixIndex;
 	unsigned char dist2Max;
+	float ds_ratio, ds_cnt;
 
 	unsigned char returnPeakMap = 1;
 	if(peakMap[0] == 1)
 		returnPeakMap = 0;
+
+	if(WIN_N < finiteSampleBias)
+		WIN_N = finiteSampleBias;
+	ds_ratio = WIN_N/finiteSampleBias;
 
 	NUM_PATCHS_ROW = floor(XPIX/ PTCHSZ);	//XPIX may or may not be dividable by PTCHSZ
 	NUM_PATCHS_CLM = floor(YPIX/ PTCHSZ);
 	WINSIDE = (int) floor(PTCHSZ/2)+1;
 	WINSZ = 2 * WINSIDE + 1;
 	WIN_N = WINSZ*WINSZ;
+
+	winScale = sqrt(PEAK_MAX_PIX)/6;
+
+	float* win_of_peak_vec_downSampled;
+	win_of_peak_vec_downSampled = (float*) malloc(finiteSampleBias * sizeof(float));
 
 	win_of_peak=(float **) malloc(WINSZ*sizeof(float *));
 	for(i=0;i<WINSZ;i++)
@@ -117,7 +129,7 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 
 			pixIndex =(int)((Ptch_rcnt*PTCHSZ + (PtchRowEnd + PtchRowStart)/2) + (Ptch_ccnt*PTCHSZ + (PtchClmEnd + PtchClmStart)/2)*XPIX);
 			brightPeakInTheDarkLimit = darkThreshold[pixIndex] + \
-							MSSE_LAMBDA * sqrt(darkThreshold[pixIndex]*singlePhotonADU[pixIndex]);
+							MSSE_LAMBDA * sqrt(darkThreshold[pixIndex] * singlePhotonADU);
 			Patch_Threshold = brightPeakInTheDarkLimit/2;
 			Pchimg_maximum = Patch_Threshold + 1;
 			while( Pchimg_maximum > Patch_Threshold ) {
@@ -138,11 +150,11 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 					break;
 				}
 				pixIndex = Glob_row_ind + Glob_clm_ind *XPIX;
-				peakMask[pixIndex]=0;
+				peakMask[pixIndex] = 0;
  
 				//if the patch maximum is masked or too small
 				brightPeakInTheDarkLimit = darkThreshold[pixIndex] + \
-								MSSE_LAMBDA * sqrt(darkThreshold[pixIndex]*singlePhotonADU[pixIndex]);
+								MSSE_LAMBDA * sqrt(darkThreshold[pixIndex]*singlePhotonADU);
 				if (Pchimg_maximum <= brightPeakInTheDarkLimit) {
 					break;
 				}
@@ -184,20 +196,37 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 					}
 				}
 
+				/*
 				float* weights;
 				weights = (float*) malloc(WIN_N * sizeof(float));
 				for(i=0;i<WIN_N;i++)
 					weights[i]=1;
-				fitValue2Skewed(win_of_peak_vec, weights, 
-								modelParams, 0, WIN_N, 0.5, 0.3,
-								MSSE_LAMBDA, optIters, 
-								sqrt(darkThreshold[pixIndex]*singlePhotonADU[pixIndex]));
+				fitValue(win_of_peak_vec, weights,
+						 modelParams, 0, WIN_N, 0.5, 0.3,
+						 MSSE_LAMBDA, optIters,
+						 );
 				free(weights);				
+				 */
+
+				i = 0;
+				pixcnt = 0;
+				ds_cnt = 0;
+				while ( (i<WIN_N) && (pixcnt<finiteSampleBias) ) {
+					win_of_peak_vec_downSampled[pixcnt++] = win_of_peak_vec[i];
+					ds_cnt += ds_ratio;
+					i = (int) ds_cnt;
+				}
+
+				RobustSingleGaussianVec(win_of_peak_vec_downSampled, modelParams,
+				                        0, pixcnt,
+				                        0.5, 0.3,
+				                        MSSE_LAMBDA, optIters,
+										sqrt(darkThreshold[pixIndex]*singlePhotonADU));
 
 				winModelValue = modelParams[0];
 				win_estScale = modelParams[1];
 				win_darkThreshold = win_darkThreshold/(WIN_N-sumNoDataPix);
-				win_Proposed_Threshold = MSSE_LAMBDA*win_estScale + winModelValue;
+				win_Proposed_Threshold = MSSE_LAMBDA * win_estScale + winModelValue;
 				
 				if (Patch_Threshold < win_Proposed_Threshold)
 					Patch_Threshold = win_Proposed_Threshold;
@@ -265,11 +294,14 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 								for (lc_clm_cnt = 0 ; lc_clm_cnt < 3 ; lc_clm_cnt++) {
 									curr_pix_x = lc_row_cnt-1 + rind;
 									curr_pix_y = lc_clm_cnt-1 + cind;
-									dist2Max = (curr_pix_x-WINSIDE)*(curr_pix_x-WINSIDE)+(curr_pix_y-WINSIDE)*(curr_pix_y-WINSIDE);
+									dist2Max = (curr_pix_x-WINSIDE)*(curr_pix_x-WINSIDE)+
+											   (curr_pix_y-WINSIDE)*(curr_pix_y-WINSIDE);
 									if (win_of_peak_mask[curr_pix_x][curr_pix_y] == 1) {
 										win_of_peak_mask[curr_pix_x][curr_pix_y] = 0;
 										curr_pix_val = win_of_peak[curr_pix_x][curr_pix_y];
-										if ( curr_pix_val - winModelValue >= (win_of_peak[WINSIDE][WINSIDE] - winModelValue) * exp(-dist2Max)) {
+										if ( curr_pix_val - win_Proposed_Threshold >= 
+											     (win_of_peak[WINSIDE][WINSIDE] - win_Proposed_Threshold) * 
+												         exp(-dist2Max/(2*winScale))) {
 											if ( curr_pix_val >= win_Proposed_Threshold) {
 												peak_pix_cnt++;
 												win_peak_info_x[peak_pix_cnt] = curr_pix_x;
@@ -303,8 +335,8 @@ int peakFinder(	float *inData, unsigned char *inMask, unsigned char *peakMask,
 						mass_y += CURY*(win_peak_info_val[i]);
 						mass_t += win_peak_info_val[i];
 						if(returnPeakMap) {
-							pixIndex = CURX*YPIX + CURY;
-							peakMap[pixIndex] = i+1;
+							pixIndex = CURX + CURY*XPIX;
+							peakMap[pixIndex] = win_peak_info_val[i];
 						}
 					}
 					//Complying with Cheetah's output
@@ -337,6 +369,7 @@ freeArray_f(win_of_peak, WINSZ);
 freeArray_ub(win_of_peak_mask, WINSZ);
 
 free(win_of_peak_vec);
+free(win_of_peak_vec_downSampled);
 free(win_of_peak_mask_vec);
 
 free(win_peak_info_x);
@@ -351,3 +384,4 @@ return(peak_cnt);
 #ifdef __cplusplus
 }
 #endif
+
