@@ -62,8 +62,10 @@ def robustPeakFinderPyFunc(inData,
             darkSNR = 4 to 6 gives good results.
             default: 0 with the size of inData
     singlePhotonADU : relate pixel values to variance of background under high intensity Flat field
-                    The gain of the line passing through zero gives you the single photon ADU
-            default: 1 with the size of inData
+                    The slope of the line passing through zero gives you the single photon ADU
+                    NOTE: using low intensity flat field will not allow you model the nonlinearities
+                    of the system with your line.
+            default: 1
     maxBackMeanMap : maximum value of the model for the background, 
                        useful for stopping background to go to nonlinear regions
             default: np.fino('float32').max with the size of inData
@@ -161,7 +163,7 @@ def robustPeakFinderPyFunc_multiprocFunc(queue,
                                             inMask = inMaskT[imgCnt],
                                             peakMask = peakMaskT[imgCnt],
                                             darkThreshold = darkThreshold[imgCnt], 
-                                            singlePhotonADU = singlePhotonADU[imgCnt], 
+                                            singlePhotonADU = singlePhotonADU, 
                                             maxBackMeanMap = backgroundMaxT[imgCnt],
                                             bckSNR = bckSNR,
                                             pixPAPR = pixPAPR,
@@ -183,7 +185,7 @@ def robustPeakFinderPyFunc_multiproc(inData,
                                         inMask = None,
                                         peakMask = None,
                                         darkThreshold = None, 
-                                        singlePhotonADU = None,
+                                        singlePhotonADU = 1,
                                         maxBackMeanMap = None, 
                                         bckSNR = 6.0,
                                         pixPAPR = 2.0,
@@ -203,9 +205,7 @@ def robustPeakFinderPyFunc_multiproc(inData,
         maxBackMeanMap = np.ones(inDataShape, dtype='float32')*np.finfo('float32').max
     if(darkThreshold is None):
         darkThreshold = np.zeros(inDataShape, dtype='float32')
-    if(singlePhotonADU is None):
-        singlePhotonADU = np.ones(inDataShape, dtype='float32')
-        
+
     f_N = inData.shape[0]
     
     peakListTensor = np.zeros((f_N, 1024, 6), dtype='float32')
@@ -246,7 +246,7 @@ def robustPeakFinderPyFunc_multiproc(inData,
                             inMask[baseImgCnt:baseImgCnt+stride],
                             peakMask[baseImgCnt:baseImgCnt+stride],
                             darkThreshold[baseImgCnt:baseImgCnt+stride],
-                            singlePhotonADU[baseImgCnt:baseImgCnt+stride],
+                            singlePhotonADU,
                             maxBackMeanMap[baseImgCnt:baseImgCnt+stride],
                             bckSNR, 
                             pixPAPR,
