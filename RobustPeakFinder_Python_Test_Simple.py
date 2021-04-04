@@ -60,54 +60,57 @@ if __name__ == '__main__':
     XSZ = 1221
     YSZ = 1150
     WINSIZE = 7
-    inputPeaksNumber = 250
+    inputPeaksNumber = 25
     numOutliers = 5
-    print("Generating a pattern with " + str(inputPeaksNumber) + " peaks...")
+    if(True):
+        print("Generating a pattern with " + str(inputPeaksNumber) + " peaks...")
+        
+        inData, inMask, randomLocations = diffractionPatternMaker(XSZ, YSZ, WINSIZE, inputPeaksNumber, numOutliers)
     
-    inData, inMask, randomLocations = diffractionPatternMaker(XSZ, YSZ, WINSIZE, inputPeaksNumber, numOutliers)
-
-    #peakMask = 1 - inMask.copy()
-
-    print("Pattern Ready! Calling the Robust Peak Finder...")
-    time_time = time.time()
-    peakList, peakMap = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, 
-                                                                               inMask = inMask, 
-                                                                               bckSNR = 6.0,
-                                                                               returnPeakMap = True,
-                                                                               PTCHSZ = 25,
-                                                                               finiteSampleBias = 200)
-    print('RPF finished in ' + '%4f'%(time.time() - time_time) +' seconds')
-    print("RPF: There are " + str(peakList.shape[0]) + " peaks in this image!")
-    print(peakList[:, :2].T)
-    print(randomLocations)
+        #peakMask = 1 - inMask.copy()
     
-    plt.imshow((inMask*peakMap).T)
-    plt.plot(peakList[:, 0], peakList[:, 1],'o')
-    plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
-    plt.show()
-    inTensorData = numpy.zeros([2, inData.shape[0], inData.shape[1]])
-    inTensorMask = numpy.zeros([2, inData.shape[0], inData.shape[1]])
-    for cnt in range(inTensorData.shape[0]):
-        _tmpData, _tmpMask, randomLocations = diffractionPatternMaker(XSZ, YSZ, WINSIZE, inputPeaksNumber, numOutliers)
-        inTensorData[cnt] = _tmpData
-        inTensorMask[cnt] = _tmpMask
-        print('pattern ' +str(cnt) + ' is generated.', flush = True)
-    
-    nPeaks, peakListTensor, peakMapTensor = \
-        RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc_multiproc(inData = inTensorData, 
-                                                                         inMask = inTensorMask, 
-                                                                         bckSNR = 6.0,
-                                                                         returnPeakMap = True,
-                                                                         PTCHSZ = 23)
-    proc = (_tmpMask*peakMapTensor[1]).copy()
-    plt.imshow(proc.T)
-    plt.plot(peakListTensor[1, :, 0], peakListTensor[1, :, 1],'o')
-    plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
-    plt.show()
+        print("Pattern Ready! Calling the Robust Peak Finder...")
+        time_time = time.time()
+        peakList, peakMap = RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc(inData = inData, 
+                                                                                   inMask = inMask, 
+                                                                                   bckSNR = 6.0,
+                                                                                   returnPeakMap = True,
+                                                                                   PTCHSZ = 25,
+                                                                                   finiteSampleBias = 200)
+        print('RPF finished in ' + '%4f'%(time.time() - time_time) +' seconds')
+        print("RPF: There are " + str(peakList.shape[0]) + " peaks in this image!")
+        print(peakList[:, :2].T)
+        print(randomLocations)
+        plt.imshow((inMask*peakMap).T)
+        plt.plot(peakList[:, 0], peakList[:, 1],'o')
+        plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
+        plt.show()
 
-    proc = (_tmpData*_tmpMask).copy()
-    plt.imshow(proc.T)
-    plt.plot(peakListTensor[1, :, 0], peakListTensor[1, :, 1],'o')
-    plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
-    plt.show()
+    if(True):
+        print('About to test multiprocessing')
+        inTensorData = numpy.zeros([2, XSZ, YSZ])
+        inTensorMask = numpy.zeros([2, XSZ, YSZ])
+        for cnt in range(inTensorData.shape[0]):
+            _tmpData, _tmpMask, randomLocations = diffractionPatternMaker(XSZ, YSZ, WINSIZE, inputPeaksNumber, numOutliers)
+            inTensorData[cnt] = _tmpData
+            inTensorMask[cnt] = _tmpMask
+            print('pattern ' +str(cnt) + ' is generated.', flush = True)
+        
+        nPeaks, peakListTensor, peakMapTensor = \
+            RobustPeakFinder_Python_Wrapper.robustPeakFinderPyFunc_multiproc(inData = inTensorData, 
+                                                                             inMask = inTensorMask, 
+                                                                             bckSNR = 6.0,
+                                                                             returnPeakMap = True,
+                                                                             PTCHSZ = 23)
+        proc = (_tmpMask*peakMapTensor[1]).copy()
+        plt.imshow(proc.T)
+        plt.plot(peakListTensor[1, :, 0], peakListTensor[1, :, 1],'o')
+        plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
+        plt.show()
+    
+        proc = (_tmpData*_tmpMask).copy()
+        plt.imshow(proc.T)
+        plt.plot(peakListTensor[1, :, 0], peakListTensor[1, :, 1],'o')
+        plt.plot(randomLocations[0,:], randomLocations[1,:],'x')
+        plt.show()
     exit(0)
