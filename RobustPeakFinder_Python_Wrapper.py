@@ -3,38 +3,41 @@ import ctypes
 import os
 from multiprocessing import Process, Queue, cpu_count
 import time
+import numbers
+
 ############ if you are going to use cython, just change this part #############
 dir_path = os.path.dirname(os.path.realpath(__file__))
 peakFinderPythonLib = ctypes.cdll.LoadLibrary(dir_path + '/RobustPeakFinder.so')
 """"RPF main calling function:
-int RobustPeakFinder(float *inData, 
-               unsigned char use_Mask,
-               unsigned char *inMask, 
-               unsigned char use_peakMask,
-               unsigned char *inPeakMask,
-               unsigned char minBackMeanHasAMap,
-               float *minBackMeanMap, 
-               unsigned char maxBackMeanHasAMap,
-               float *maxBackMeanMap, 
-               unsigned char returnPeakMap,
-               float *peakMap,
-               float *peakList,
-               float singlePhotonADU,
-               int MAXIMUM_NUMBER_OF_PEAKS,
-               float bckSNR, 
-               float pixPAPR,
-               int XPIX, 
-               int YPIX, 
-               int PTCHSZ,    
-               int PEAK_MIN_PIX, 
-               int PEAK_MAX_PIX,
-               int n_optIters, 
-               int finiteSampleBias,
-               int downSampledSize, 
-               float MSSE_LAMBDA, 
-               float searchSNR,
-               float highPoissonTh, 
-               float lowPoissonTh)
+int RobustPeakFinder(
+    float *inData, 
+    unsigned char use_Mask,
+    unsigned char *inMask, 
+    unsigned char use_peakMask,
+    unsigned char *inPeakMask,
+    unsigned char minBackMeanHasAMap,
+    float *minBackMeanMap, 
+    unsigned char maxBackMeanHasAMap,
+    float *maxBackMeanMap, 
+    unsigned char returnPeakMap,
+    float *peakMap,
+    float *peakList,
+    float singlePhotonADU,
+    int MAXIMUM_NUMBER_OF_PEAKS,
+    float bckSNR, 
+    float pixPAPR,
+    int XPIX, 
+    int YPIX, 
+    int PTCHSZ,    
+    int PEAK_MIN_PIX, 
+    int PEAK_MAX_PIX,
+    int n_optIters, 
+    int finiteSampleBias,
+    int downSampledSize, 
+    float MSSE_LAMBDA, 
+    float searchSNR,
+    float highPoissonTh, 
+    float lowPoissonTh)
 """
 peakFinderPythonLib.RobustPeakFinder.restype = ctypes.c_int
 peakFinderPythonLib.RobustPeakFinder.argtypes = [
@@ -169,15 +172,22 @@ def robustPeakFinderPyFunc(inData,
     maxBackMeanHasAMap = 0
     if(maxBackMeanMap is None):
         maxBackMeanMap = np.finfo('float32').max \
-            + np.zeros(shape = 1, dtype = 'float32')
+            + np.zeros(shape = 1).astype('float32')
+    elif(isinstance(maxBackMeanMap, numbers.Number)):
+        maxBackMeanMap = maxBackMeanMap\
+            + np.zeros(shape = 1).astype('float32')
     elif(maxBackMeanMap.size>1):
         maxBackMeanMap = maxBackMeanMap.astype('float32')
         maxBackMeanHasAMap = 1
+
         
     minBackMeanHasAMap = 0
     if(minBackMeanMap is None):
         minBackMeanMap = (singlePhotonADU/2.0)\
-            *np.ones(shape = 1, dtype = 'float32')
+            *np.ones(shape = 1).astype('float32')
+    elif(isinstance(minBackMeanMap, numbers.Number)):
+        minBackMeanMap = minBackMeanMap\
+            *np.ones(shape = 1).astype('float32')
     elif(minBackMeanMap.size>1):
         minBackMeanMap = minBackMeanMap.astype('float32')
         minBackMeanHasAMap = 1
@@ -185,48 +195,48 @@ def robustPeakFinderPyFunc(inData,
     inData = inData.astype('float32')
     
     peakList = np.zeros([MAXIMUM_NUMBER_OF_PEAKS, 6], dtype='float32')    
+    peakMap = np.zeros(shape = inData.shape, dtype = 'float32').flatten('F')
     if(returnPeakMap):
         returnPeakMap = 1
-        peakMap = np.zeros(shape = inData.shape, dtype = 'float32').flatten('F')
     else:
         returnPeakMap = 0
-        peakMap = 0
     
     if(searchSNR is None):
         searchSNR = bckSNR*0.8
 
-    peak_cnt = peakFinderPythonLib.RobustPeakFinder(inData.flatten('F'), 
-                                           use_Mask,
-                                           inMask.flatten('F'),
-                                           use_peakMask,
-                                           peakMask.flatten('F'),
-                                           minBackMeanHasAMap,
-                                           minBackMeanMap.flatten('F'),
-                                           maxBackMeanHasAMap,
-                                           maxBackMeanMap.flatten('F'),
-                                           returnPeakMap,
-                                           peakMap,
-                                           peakList,
-                                           singlePhotonADU,
-                                           MAXIMUM_NUMBER_OF_PEAKS,
-                                           bckSNR, 
-                                           pixPAPR,
-                                           inDataShape[0], 
-                                           inDataShape[1], 
-                                           PTCHSZ, 
-                                           PEAK_MIN_PIX, 
-                                           PEAK_MAX_PIX,
-                                           optIters,
-                                           finiteSampleBias,
-                                           downSampledSize,
-                                           MSSE_LAMBDA,
-                                           searchSNR,
-                                           highPoissonTh,
-                                           lowPoissonTh)
+    peak_cnt = peakFinderPythonLib.RobustPeakFinder(
+        inData.flatten('F'), 
+        use_Mask,
+        inMask.flatten('F'),
+        use_peakMask,
+        peakMask.flatten('F'),
+        minBackMeanHasAMap,
+        minBackMeanMap.flatten('F'),
+        maxBackMeanHasAMap,
+        maxBackMeanMap.flatten('F'),
+        returnPeakMap,
+        peakMap,
+        peakList,
+        singlePhotonADU,
+        MAXIMUM_NUMBER_OF_PEAKS,
+        bckSNR, 
+        pixPAPR,
+        inDataShape[0], 
+        inDataShape[1], 
+        PTCHSZ, 
+        PEAK_MIN_PIX, 
+        PEAK_MAX_PIX,
+        optIters,
+        finiteSampleBias,
+        downSampledSize,
+        MSSE_LAMBDA,
+        searchSNR,
+        highPoissonTh,
+        lowPoissonTh)
     if(returnPeakMap):
         return((peakList[:peak_cnt], 
                 peakMap.reshape(inData.shape[1], 
-                inData.shape[0]).T))
+                                inData.shape[0]).T))
     else:
          return(peakList[:peak_cnt])
     
@@ -384,3 +394,6 @@ def robustPeakFinderPyFunc_multiproc(inData,
         return(nPeaks, peakListTensor, peakMapTensor)
     else:
         return(nPeaks, peakListTensor)
+    
+if __name__ == '__main__':
+    robustPeakFinderPyFunc(np.random.rand(1000, 1100))

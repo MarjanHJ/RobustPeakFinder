@@ -293,7 +293,8 @@ int RobustPeakFinder(float *inData,
                 if(minBackMeanHasAMap)
                     _minBackMeanMap = minBackMeanMap[pixIndex];
                     
-                fitValue(
+                //fitValue(
+                fitValue2Skewed(
                     win_of_peak_vec_ds, weights, modelParams,
                     0, pixcnt, 0.5, 0.3, MSSE_LAMBDA, n_optIters,
                     sqrt(_minBackMeanMap*singlePhotonADU),
