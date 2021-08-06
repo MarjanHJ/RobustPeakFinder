@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include "RGFLib.h"
+#include "RobustPeakFinder.h"
+
+#define MIN_INPUT_MSSE 30
 
 void freeArray_f(float **a, unsigned int m) {
     unsigned int i;
@@ -29,34 +32,35 @@ unsigned char isNotZero(int *inarray, int length){
 extern "C" {
 #endif
 
-int RobustPeakFinder(float *inData,
-			unsigned char use_Mask,
-            unsigned char *inMask, 
-			unsigned char use_peakMask,
-            unsigned char *inPeakMask,
-            unsigned char minBackMeanHasAMap,
-            float *minBackMeanMap, 
-            unsigned char maxBackMeanHasAMap,
-            float *maxBackMeanMap, 
-			unsigned char returnPeakMap,
-            float *peakMap,
-            float *peakList,
-            float singlePhotonADU,
-            int MAXIMUM_NUMBER_OF_PEAKS,
-            float bckSNR, 
-            float pixPAPR,
-            int XPIX, 
-            int YPIX, 
-            int PTCHSZ,    
-            int PEAK_MIN_PIX, 
-            int PEAK_MAX_PIX,
-            int n_optIters, 
-            int finiteSampleBias,
-            int downSampledSize, 
-            float MSSE_LAMBDA, 
-            float searchSNR,
-            float highPoissonTh, 
-            float lowPoissonTh) {
+int RobustPeakFinder(
+		float *inData,
+		unsigned char use_Mask,
+		unsigned char *inMask,
+		unsigned char use_peakMask,
+		unsigned char *inPeakMask,
+		unsigned char minBackMeanHasAMap,
+		float *minBackMeanMap,
+		unsigned char maxBackMeanHasAMap,
+		float *maxBackMeanMap,
+		unsigned char returnPeakMap,
+		float *peakMap,
+		float *peakList,
+		float singlePhotonADU,
+		int MAXIMUM_NUMBER_OF_PEAKS,
+		float bckSNR,
+		float pixPAPR,
+		int XPIX,
+		int YPIX,
+		int PTCHSZ,
+		int PEAK_MIN_PIX,
+		int PEAK_MAX_PIX,
+		int n_optIters,
+		int finiteSampleBias,
+		int downSampledSize,
+		float MSSE_LAMBDA,
+		float searchSNR,
+		float highPoissonTh,
+		float lowPoissonTh) {
 	
     int *win_peak_info_x;
     int *win_peak_info_y;
@@ -220,7 +224,7 @@ int RobustPeakFinder(float *inData,
                 if (Pchimg_maximum <= Patch_Threshold) {
                     break;
                 }
-								
+
                 pixIndex = Glob_row_ind + Glob_clm_ind *XPIX;
                 
 				peakMask[pixIndex] = 0;
@@ -237,9 +241,12 @@ int RobustPeakFinder(float *inData,
 
                 //acquire the data around the extremum from original data.
 
-                //now assuming a window around the pixel in orignal inp-Data and original inp-Data_mask
-                //inp-Data_mask is global, copy a window of it around the pixel into win_of_peak_mask
-                //later will update the win_of_peak_mask and put it back into inp-Data_mask
+                //now assuming a window around the pixel in orignal
+                //    inp-Data and original inp-Data_mask
+                //inp-Data_mask is global, copy a window of it around the pixel
+                //    into win_of_peak_mask
+                //later will update the win_of_peak_mask and put it back
+                //    into inp-Data_mask
                 i = 0;
                 sumNoDataPix = 0;
                 win_darkThreshold = 0;
@@ -290,8 +297,9 @@ int RobustPeakFinder(float *inData,
                     i = (int) ds_cnt;
                 }
                 
-                if(minBackMeanHasAMap)
+                if(minBackMeanHasAMap) {
                     _minBackMeanMap = minBackMeanMap[pixIndex];
+                }
                     
                 //fitValue(
                 fitValue2Skewed(
@@ -305,11 +313,13 @@ int RobustPeakFinder(float *inData,
                 win_darkThreshold = win_darkThreshold/(WIN_N-sumNoDataPix);
                 win_Proposed_Threshold = searchSNR * win_estScale + winModelValue;
                 
-                if (Patch_Threshold < win_Proposed_Threshold)
+                if (Patch_Threshold < win_Proposed_Threshold) {
                     Patch_Threshold = win_Proposed_Threshold;
+                }
 
-                if(WIN_N - sumNoDataPix < 50)
+                if(WIN_N - sumNoDataPix < MIN_INPUT_MSSE) {
                     continue;
+                }
                 
                 if(highPoissonTh>0) {
                     if (winModelValue * singlePhotonADU > 
@@ -325,30 +335,39 @@ int RobustPeakFinder(float *inData,
                 }
                 
                 not_an_extermum_flag=0;
-                for (lc_row_cnt = -2 ; lc_row_cnt < 2 ; lc_row_cnt++)
-                    for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++) 
+                for (lc_row_cnt = -2 ; lc_row_cnt < 2 ; lc_row_cnt++) {
+                    for (lc_clm_cnt = -2 ; lc_clm_cnt < 2 ; lc_clm_cnt++) {
                         if (win_of_peak[WINSIDE][WINSIDE] < 
-                                win_of_peak[WINSIDE+lc_row_cnt][WINSIDE+lc_clm_cnt])
+                                win_of_peak[WINSIDE+lc_row_cnt][WINSIDE+lc_clm_cnt]) {
                             not_an_extermum_flag=1;
-                if (not_an_extermum_flag>0)
+                        }
+                    }
+                }
+                if (not_an_extermum_flag>0) {
                     continue;
+                }
 
-                if (win_of_peak[WINSIDE][WINSIDE] <= win_Proposed_Threshold)
+                if (win_of_peak[WINSIDE][WINSIDE] <= win_Proposed_Threshold) {
                     continue;
+                }
 
-                if(maxBackMeanHasAMap==1)
+                if(maxBackMeanHasAMap==1) {
                     _maxBackMeanMap = maxBackMeanMap[pixIndex];
-				if (winModelValue > _maxBackMeanMap)
+                }
+				if (winModelValue > _maxBackMeanMap) {
 					continue;
+				}
                                 
-                if (winModelValue < win_darkThreshold)
-                    if(win_of_peak[WINSIDE][WINSIDE] <= brightPeakInTheDarkLimit)
+                if (winModelValue < win_darkThreshold) {
+                    if(win_of_peak[WINSIDE][WINSIDE] <= brightPeakInTheDarkLimit) {
                         continue;
+                    }
+                }
 
                 //////////////////////////////// PAPR here:////////////////////////
                 win_num_pix = 0;
                 Signal_Power = 0;
-                for (rcnt = 0; rcnt < WINSZ; rcnt++)
+                for (rcnt = 0; rcnt < WINSZ; rcnt++) {
                     for (ccnt = 0; ccnt < WINSZ; ccnt++) {
                         if ( (win_of_peak[rcnt][ccnt] > (winModelValue - bckSNR*win_estScale)) && 
                              (win_of_peak_mask[rcnt][ccnt] == 1) ) {
@@ -357,9 +376,11 @@ int RobustPeakFinder(float *inData,
 								(win_of_peak[rcnt][ccnt] - winModelValue);
                         }
                     }
+                }
                 Signal_Power = sqrt(Signal_Power / win_num_pix);
-                if ( ((win_of_peak[WINSIDE][WINSIDE] - winModelValue) / Signal_Power) <= pixPAPR)
+                if ( ((win_of_peak[WINSIDE][WINSIDE] - winModelValue) / Signal_Power) <= pixPAPR) {
                     continue;
+                }
                 /////////////////////////////////////////////////////////////////
                 //now begin by the extremum and mark all the adjacent
                 //pixels that are above the proposed Threshold
@@ -477,7 +498,6 @@ int RobustPeakFinder(float *inData,
 
 	return(peak_cnt);
 }
-
 
 #ifdef __cplusplus
 }
